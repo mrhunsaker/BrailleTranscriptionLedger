@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
   <artifactId>ledger-gui</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>2024.0.0-beta</version>
   <build>
     <plugins>
       <plugin>
@@ -19,6 +19,12 @@
               <transformers>
                 <transformer>
                   <mainClass>LedgerGUI</mainClass>
+                </transformer>
+                <transformer>
+                  <manifestEntries>
+                    <Main-Class>LedgerGUI</Main-Class>
+                    <Built-By>mrhunsaker</Built-By>
+                  </manifestEntries>
                 </transformer>
               </transformers>
             </configuration>

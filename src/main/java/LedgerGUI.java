@@ -24,11 +24,15 @@ import java.util.Date;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.util.Collections;
+import java.util.List;
+import java.util.ArrayList;
 
 public class LedgerGUI extends JFrame {
 
-	private JTextField dateField, schoolField, projectField, timeField, studentField, subjectField;
+	private JTextField dateField, schoolField, timeField, studentField, subjectField;
     private JTextArea notesField;
+    private JComboBox<String> projectField;
 	private JCheckBox completeCheckBox;
 	private JButton submitButton, generatePdfButton;
 	private JTable dataTable;
@@ -40,7 +44,7 @@ public class LedgerGUI extends JFrame {
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		int width = screenSize.width;
 		int height = screenSize.height;
-		setTitle("Accessible Document Generation Ledge");
+		setTitle("Accessible Document Generation Ledger");
 		setSize(1000, height);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(new BorderLayout());
@@ -69,10 +73,12 @@ public class LedgerGUI extends JFrame {
 			"<html>School</html>",
 			schoolField = new JTextField()
 		);
+        String[] projectOptions = {"UEB Literary", "UEB Technical", "Tactile Graphics", "Large Print", "3D Print"};
+        projectField = new JComboBox<>(projectOptions);
 		addLabelAndField(
 			inputPanel,
 			"<html>Project: <br>(UEB, UEB Technical, Tactile Graphics, Large Print, 3D Print)</html>",
-			projectField = new JTextField()
+			projectField
 		);
 		addLabelAndField(
 			inputPanel,
@@ -176,29 +182,57 @@ public class LedgerGUI extends JFrame {
 
 
 	private void showDateRangeDialog() {
-		JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
-		JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
+        JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
+        JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
 
-		JPanel panel = new JPanel(new GridLayout(0, 1, 5, 5));
-		panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // Create checkboxes for project options
+        String[] projectOptions = {"UEB", "UEB Technical", "Tactile Graphics", "Large Print", "3D Print"};
+        JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
 
-		addLabelAndField(panel, "Start Date (YYYY-MM-DD):", startDateField);
-		addLabelAndField(panel, "End Date (YYYY-MM-DD):", endDateField);
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-		int result = JOptionPane.showConfirmDialog(
-			null,
-			panel,
-			"Enter Date Range",
-			JOptionPane.OK_CANCEL_OPTION,
-			JOptionPane.PLAIN_MESSAGE
-		);
+        panel.add(new JLabel("Start Date (YYYY-MM-DD):"), gbc);
+        gbc.gridx = 1;
+        panel.add(startDateField, gbc);
 
-		if (result == JOptionPane.OK_OPTION) {
-			String startDate = startDateField.getText();
-			String endDate = endDateField.getText();
-			generatePdfReport(startDate, endDate);
-		}
-	}
+        gbc.gridx = 0;
+        gbc.gridy++;
+        panel.add(new JLabel("End Date (YYYY-MM-DD):"), gbc);
+        gbc.gridx = 1;
+        panel.add(endDateField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        panel.add(new JLabel("Select Projects:"), gbc);
+
+        gbc.gridy++;
+        for (int i = 0; i < projectOptions.length; i++) {
+            projectCheckboxes[i] = new JCheckBox(projectOptions[i]);
+            projectCheckboxes[i].setSelected(true); // Default to selected
+            panel.add(projectCheckboxes[i], gbc);
+            gbc.gridy++;
+        }
+
+        int result = JOptionPane.showConfirmDialog(null, panel, "Enter Date Range and Select Projects",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String startDate = startDateField.getText();
+            String endDate = endDateField.getText();
+            List<String> selectedProjects = new ArrayList<>();
+            for (JCheckBox checkbox : projectCheckboxes) {
+                if (checkbox.isSelected()) {
+                    selectedProjects.add(checkbox.getText());
+                }
+            }
+            generatePdfReport(startDate, endDate, selectedProjects);
+        }
+    }
 
 	// Helper methods to get current date and previous month end date
 	public String getCurrentMonth15th() {
@@ -290,9 +324,13 @@ public class LedgerGUI extends JFrame {
 		String date = dateField.getText();
 		String school = schoolField.getText();
 		String student = studentField.getText();
+        if (!student.matches("[A-Z][a-z][A-Z][a-z]")) {
+            JOptionPane.showMessageDialog(this, "Student field must be in the format XxXx (e.g., AbCd)");
+            return;
+        }
 		String subject = subjectField.getText();
 		String notes = cleanInput(notesField.getText());
-		String project = projectField.getText();
+		String project = projectField.getSelectedItem().toString();
 		String time = timeField.getText();
 		boolean complete = completeCheckBox.isSelected();
 
@@ -333,12 +371,12 @@ public class LedgerGUI extends JFrame {
 		studentField.setText("");
 		subjectField.setText("");
 		notesField.setText("");
-		projectField.setText("");
 		timeField.setText("");
 		completeCheckBox.setSelected(false);
 	}
 
-	private void generatePdfReport(String startDate, String endDate) {
+    private void generatePdfReport(String startDate, String endDate, List<String> selectedProjects) {
+        String filePath = "";
 		try {
 			// Get the user's Downloads directory
 			String userHome = System.getProperty("user.home");
@@ -351,7 +389,7 @@ public class LedgerGUI extends JFrame {
 			String fileName =
 				"LedgerReport_" + startDate + "_to_" + endDate + ".pdf";
 
-			String filePath = downloadsDir + fileName;
+			filePath = downloadsDir + fileName;
 
 			Document document = new Document(PageSize.LETTER, 36, 36, 108, 72); // top margin increased to 1.5 inches (108 points)
 			PdfWriter writer = PdfWriter.getInstance(
@@ -379,7 +417,7 @@ public class LedgerGUI extends JFrame {
 			document.add(title);
 
 			// Add table
-			List<String[]> data = fetchDataFromDatabase(startDate, endDate);
+			List<String[]> data = fetchDataFromDatabase(startDate, endDate, selectedProjects);
 			Object[] tableAndTotal = createTable(data, document, writer, event);
 			PdfPTable table = (PdfPTable) tableAndTotal[0];
 			double totalTime = (Double) tableAndTotal[1];
@@ -424,6 +462,23 @@ public class LedgerGUI extends JFrame {
 				"Error generating PDF: " + e.getMessage()
 			);
 		}
+        try {
+            File pdfFile = new File(filePath);
+        if (pdfFile.exists()) {
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().open(pdfFile);
+            } else {
+                JOptionPane.showMessageDialog(this, "Desktop not supported. Unable to open PDF automatically.");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "PDF file not found: " + filePath);
+        }
+    } catch (IOException ex) {
+        ex.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error opening PDF: " + ex.getMessage());
+    }
+
+    JOptionPane.showMessageDialog(this, "PDF report generated and opened: " + filePath);
 	}
 
 	private Object[] createTable(
@@ -688,39 +743,36 @@ public class LedgerGUI extends JFrame {
 		}
 	}
 
-	private List<String[]> fetchDataFromDatabase(
-		String startDate,
-		String endDate
-	) {
-		List<String[]> data = new ArrayList<>();
-		try (
-			Connection conn = DriverManager.getConnection(DB_URL);
-			PreparedStatement pstmt = conn.prepareStatement(
-				"SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? ORDER BY date"
-			)
-		) {
-			pstmt.setString(1, startDate);
-			pstmt.setString(2, endDate);
-			ResultSet rs = pstmt.executeQuery();
+	private List<String[]> fetchDataFromDatabase(String startDate, String endDate, List<String> selectedProjects) {
+        List<String[]> data = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? AND project IN ("
+                    + String.join(",", Collections.nCopies(selectedProjects.size(), "?")) + ") ORDER BY date")) {
 
-			while (rs.next()) {
-				String[] row = {
-					rs.getString("date"),
-					rs.getString("student"),
-					rs.getString("subject"),
-					rs.getString("school"),
-					rs.getString("project"),
-					rs.getString("time"),
-				};
-				data.add(row);
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(
-				this,
-				"Error fetching data: " + e.getMessage()
-			);
-		}
-		return data;
-	}
+            pstmt.setString(1, startDate);
+            pstmt.setString(2, endDate);
+            for (int i = 0; i < selectedProjects.size(); i++) {
+                pstmt.setString(i + 3, selectedProjects.get(i));
+            }
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                String[] row = {
+                    rs.getString("date"),
+                    rs.getString("student"),
+                    rs.getString("subject"),
+                    rs.getString("school"),
+                    rs.getString("project"),
+                    rs.getString("time"),
+                };
+                data.add(row);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error fetching data: " + e.getMessage());
+        }
+        return data;
+    }
 }
