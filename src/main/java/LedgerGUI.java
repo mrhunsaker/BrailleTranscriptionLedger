@@ -1,3 +1,5 @@
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.intellijthemes.*;
 import com.itextpdf.text.*;
 import com.itextpdf.text.BadElementException;
 import com.itextpdf.text.BaseColor;
@@ -11,6 +13,8 @@ import com.itextpdf.text.pdf.PdfWriter;
 import java.awt.*;
 import java.awt.Desktop;
 import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -18,21 +22,60 @@ import java.net.MalformedURLException;
 import java.sql.*;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
+import javax.swing.*;
+import javax.swing.UIManager;
+import javax.swing.table.DefaultTableModel;
 
 public class LedgerGUI extends JFrame {
 
+	private static final Map<
+		String,
+		Class<? extends LookAndFeel>
+	> INTELLIJ_THEMES = new HashMap<>();
+
+	static {
+		INTELLIJ_THEMES.put("Arc", FlatArcIJTheme.class);
+		INTELLIJ_THEMES.put("Arc Orange", FlatArcOrangeIJTheme.class);
+		INTELLIJ_THEMES.put("Carbon", FlatCarbonIJTheme.class);
+		INTELLIJ_THEMES.put("Cobalt 2", FlatCobalt2IJTheme.class);
+		INTELLIJ_THEMES.put("Cyan Light", FlatCyanLightIJTheme.class);
+		INTELLIJ_THEMES.put("Dark Purple", FlatDarkPurpleIJTheme.class);
+		INTELLIJ_THEMES.put("Dracula", FlatDraculaIJTheme.class);
+		INTELLIJ_THEMES.put("Gray", FlatGrayIJTheme.class);
+		INTELLIJ_THEMES.put(
+			"Gruvbox Dark Hard",
+			FlatGruvboxDarkHardIJTheme.class
+		);
+		INTELLIJ_THEMES.put("Hiberbee Dark", FlatHiberbeeDarkIJTheme.class);
+		INTELLIJ_THEMES.put("High Contrast", FlatHighContrastIJTheme.class);
+		INTELLIJ_THEMES.put("Light Flat", FlatLightFlatIJTheme.class);
+		INTELLIJ_THEMES.put(
+			"Material Design Dark",
+			FlatMaterialDesignDarkIJTheme.class
+		);
+		INTELLIJ_THEMES.put("Monocai", FlatMonocaiIJTheme.class);
+		INTELLIJ_THEMES.put("Nord", FlatNordIJTheme.class);
+		INTELLIJ_THEMES.put("One Dark", FlatOneDarkIJTheme.class);
+		INTELLIJ_THEMES.put("Solarized Dark", FlatSolarizedDarkIJTheme.class);
+		INTELLIJ_THEMES.put("Solarized Light", FlatSolarizedLightIJTheme.class);
+		INTELLIJ_THEMES.put("Spacegray", FlatSpacegrayIJTheme.class);
+		INTELLIJ_THEMES.put("Vuesion", FlatVuesionIJTheme.class);
+	}
+
+	private JMenuBar menuBar;
 	private JTextField dateField, schoolField, timeField, studentField, subjectField;
-    private JTextArea notesField;
-    private JComboBox<String> projectField;
+	private JTextArea notesField;
+	private JComboBox<String> projectField;
 	private JCheckBox completeCheckBox;
 	private JButton submitButton, generatePdfButton;
 	private JTable dataTable;
@@ -49,7 +92,48 @@ public class LedgerGUI extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(new BorderLayout());
 
+		// Create MenuBar
+		JMenuBar menuBar = new JMenuBar();
+		JMenu fileMenu = new JMenu("File");
+		JMenu themeMenu = new JMenu("Themes");
+		JMenuItem aboutMenuItem = new JMenuItem("About");
+		aboutMenuItem.addActionListener(
+			new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					JOptionPane.showMessageDialog(
+						LedgerGUI.this,
+						"Braille Transcription Ledger\n" +
+						"Version 2024.0.0-beta\n" +
+						"© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D. All rights reserved.",
+						"About",
+						JOptionPane.INFORMATION_MESSAGE
+					);
+				}
+			}
+		);
+		JMenuItem exitMenuItem = new JMenuItem("Exit");
+		exitMenuItem.addActionListener(
+			new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					System.exit(0);
+				}
+			}
+		);
+
+		for (String themeName : INTELLIJ_THEMES.keySet()) {
+			JMenuItem item = new JMenuItem(themeName);
+			item.addActionListener(e -> setIntelliJTheme(themeName));
+			themeMenu.add(item);
+		}
+		fileMenu.add(aboutMenuItem);
+		fileMenu.add(exitMenuItem);
+		menuBar.add(fileMenu);
+		menuBar.add(themeMenu);
+		setJMenuBar(menuBar); // Use setJMenuBar() to add the menu bar to the JFrame
 		// Input Panel
+
 		JPanel inputPanel = new JPanel(new GridLayout(0, 2, 10, 10));
 		inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
@@ -73,8 +157,16 @@ public class LedgerGUI extends JFrame {
 			"<html>School</html>",
 			schoolField = new JTextField()
 		);
-        String[] projectOptions = {"UEB Literary", "UEB Technical", "Tactile Graphics", "Large Print", "3D Print"};
-        projectField = new JComboBox<>(projectOptions);
+		String[] projectOptions = {
+			"UEB Literary Transcription",
+			"UEB Technical Transcription",
+			"Tactile Graphics Generation",
+			"Large Print Generation",
+			"3D Print Rendering",
+			"3D Print Production",
+		};
+
+		projectField = new JComboBox<>(projectOptions);
 		addLabelAndField(
 			inputPanel,
 			"<html>Project: <br>(UEB, UEB Technical, Tactile Graphics, Large Print, 3D Print)</html>",
@@ -92,7 +184,7 @@ public class LedgerGUI extends JFrame {
 		addLabelAndField(
 			inputPanel,
 			"<html>Process Notes:</html>",
-            notesScrollPane
+			notesScrollPane
 		);
 
 		JLabel completeLabel = new JLabel("Complete:");
@@ -162,77 +254,91 @@ public class LedgerGUI extends JFrame {
 	}
 
 	private void addLabelAndField(
-    	JPanel panel,
-    	String labelText,
-    	JComponent field
+		JPanel panel,
+		String labelText,
+		JComponent field
 	) {
-    	JLabel label = new JLabel(labelText);
-    	label.setLabelFor(field);
-    	panel.add(label);
-    	panel.add(field);
-    	field.getAccessibleContext().setAccessibleDescription("Enter " + labelText.toLowerCase());
-	}
-	private String cleanInput(String input) {
-    	// Remove any characters that might cause issues with SQLite
-    	// This example removes quotes and escapes backslashes
-    	return input.replace("'", "''")
-                .replace("\"", "\"\"")
-                .replace("\\", "\\\\");
+		JLabel label = new JLabel(labelText);
+		label.setLabelFor(field);
+		panel.add(label);
+		panel.add(field);
+		field
+			.getAccessibleContext()
+			.setAccessibleDescription("Enter " + labelText.toLowerCase());
 	}
 
+	private String cleanInput(String input) {
+		// Remove any characters that might cause issues with SQLite
+		// This example removes quotes and escapes backslashes
+		return input
+			.replace("'", "''")
+			.replace("\"", "\"\"")
+			.replace("\\", "\\\\");
+	}
 
 	private void showDateRangeDialog() {
-        JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
-        JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
+		JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
+		JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
 
-        // Create checkboxes for project options
-        String[] projectOptions = {"UEB", "UEB Technical", "Tactile Graphics", "Large Print", "3D Print"};
-        JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
+		// Create checkboxes for project options
+		String[] projectOptions = {
+			"UEB",
+			"UEB Technical",
+			"Tactile Graphics",
+			"Large Print",
+			"3D Print",
+		};
+		JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
 
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.insets = new Insets(5, 5, 5, 5);
+		JPanel panel = new JPanel(new GridBagLayout());
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.gridx = 0;
+		gbc.gridy = 0;
+		gbc.anchor = GridBagConstraints.WEST;
+		gbc.insets = new Insets(5, 5, 5, 5);
 
-        panel.add(new JLabel("Start Date (YYYY-MM-DD):"), gbc);
-        gbc.gridx = 1;
-        panel.add(startDateField, gbc);
+		panel.add(new JLabel("Start Date (YYYY-MM-DD):"), gbc);
+		gbc.gridx = 1;
+		panel.add(startDateField, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy++;
-        panel.add(new JLabel("End Date (YYYY-MM-DD):"), gbc);
-        gbc.gridx = 1;
-        panel.add(endDateField, gbc);
+		gbc.gridx = 0;
+		gbc.gridy++;
+		panel.add(new JLabel("End Date (YYYY-MM-DD):"), gbc);
+		gbc.gridx = 1;
+		panel.add(endDateField, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy++;
-        panel.add(new JLabel("Select Projects:"), gbc);
+		gbc.gridx = 0;
+		gbc.gridy++;
+		panel.add(new JLabel("Select Projects:"), gbc);
 
-        gbc.gridy++;
-        for (int i = 0; i < projectOptions.length; i++) {
-            projectCheckboxes[i] = new JCheckBox(projectOptions[i]);
-            projectCheckboxes[i].setSelected(true); // Default to selected
-            panel.add(projectCheckboxes[i], gbc);
-            gbc.gridy++;
-        }
+		gbc.gridy++;
+		for (int i = 0; i < projectOptions.length; i++) {
+			projectCheckboxes[i] = new JCheckBox(projectOptions[i]);
+			projectCheckboxes[i].setSelected(true); // Default to selected
+			panel.add(projectCheckboxes[i], gbc);
+			gbc.gridy++;
+		}
 
-        int result = JOptionPane.showConfirmDialog(null, panel, "Enter Date Range and Select Projects",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+		int result = JOptionPane.showConfirmDialog(
+			null,
+			panel,
+			"Enter Date Range and Select Projects",
+			JOptionPane.OK_CANCEL_OPTION,
+			JOptionPane.PLAIN_MESSAGE
+		);
 
-        if (result == JOptionPane.OK_OPTION) {
-            String startDate = startDateField.getText();
-            String endDate = endDateField.getText();
-            List<String> selectedProjects = new ArrayList<>();
-            for (JCheckBox checkbox : projectCheckboxes) {
-                if (checkbox.isSelected()) {
-                    selectedProjects.add(checkbox.getText());
-                }
-            }
-            generatePdfReport(startDate, endDate, selectedProjects);
-        }
-    }
+		if (result == JOptionPane.OK_OPTION) {
+			String startDate = startDateField.getText();
+			String endDate = endDateField.getText();
+			List<String> selectedProjects = new ArrayList<>();
+			for (JCheckBox checkbox : projectCheckboxes) {
+				if (checkbox.isSelected()) {
+					selectedProjects.add(checkbox.getText());
+				}
+			}
+			generatePdfReport(startDate, endDate, selectedProjects);
+		}
+	}
 
 	// Helper methods to get current date and previous month end date
 	public String getCurrentMonth15th() {
@@ -252,16 +358,38 @@ public class LedgerGUI extends JFrame {
 
 	public static void main(String[] args) {
 		// Set the look and feel to the system look and feel
+		String defaultTheme = "Material Design Dark"; // or any other theme name from the map
 		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception e) {
-			e.printStackTrace();
+			UIManager.setLookAndFeel(
+				INTELLIJ_THEMES.get(defaultTheme)
+					.getDeclaredConstructor()
+					.newInstance()
+			);
+		} catch (Exception ex) {
+			ex.printStackTrace();
 		}
 
 		SwingUtilities.invokeLater(() -> {
-			LedgerGUI gui = new LedgerGUI();
-			gui.setVisible(true);
+			new LedgerGUI().setVisible(true);
 		});
+	}
+
+	private void setIntelliJTheme(String themeName) {
+		try {
+			Class<? extends LookAndFeel> themeClass = INTELLIJ_THEMES.get(
+				themeName
+			);
+			if (themeClass != null) {
+				UIManager.setLookAndFeel(
+					themeClass.getDeclaredConstructor().newInstance()
+				);
+				SwingUtilities.updateComponentTreeUI(this);
+			} else {
+				System.err.println("Theme not found: " + themeName);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 	}
 
 	private void initializeDatabase() {
@@ -324,10 +452,13 @@ public class LedgerGUI extends JFrame {
 		String date = dateField.getText();
 		String school = schoolField.getText();
 		String student = studentField.getText();
-        if (!student.matches("[A-Z][a-z][A-Z][a-z]")) {
-            JOptionPane.showMessageDialog(this, "Student field must be in the format XxXx (e.g., AbCd)");
-            return;
-        }
+		if (!student.matches("[A-Z][a-z][A-Z][a-z]")) {
+			JOptionPane.showMessageDialog(
+				this,
+				"Student field must be in the format XxXx (e.g., AbCd)"
+			);
+			return;
+		}
 		String subject = subjectField.getText();
 		String notes = cleanInput(notesField.getText());
 		String project = projectField.getSelectedItem().toString();
@@ -361,12 +492,18 @@ public class LedgerGUI extends JFrame {
 
 		loadDataFromDatabase();
 		JOptionPane.showMessageDialog(this, "Data submitted successfully.");
-		String displayNotes = notes.split("\n")[0] + (notes.contains("\n") ? "..." : "");
+		String displayNotes =
+			notes.split("\n")[0] + (notes.contains("\n") ? "..." : "");
 		clearInputFields();
 	}
 
 	private void clearInputFields() {
-		dateField.setText("");
+		LocalDate currentDate = LocalDate.now();
+
+		// Format the date
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		String formattedDate = currentDate.format(formatter);
+		dateField.setText(formattedDate);
 		schoolField.setText("");
 		studentField.setText("");
 		subjectField.setText("");
@@ -375,8 +512,12 @@ public class LedgerGUI extends JFrame {
 		completeCheckBox.setSelected(false);
 	}
 
-    private void generatePdfReport(String startDate, String endDate, List<String> selectedProjects) {
-        String filePath = "";
+	private void generatePdfReport(
+		String startDate,
+		String endDate,
+		List<String> selectedProjects
+	) {
+		String filePath = "";
 		try {
 			// Get the user's Downloads directory
 			String userHome = System.getProperty("user.home");
@@ -417,7 +558,11 @@ public class LedgerGUI extends JFrame {
 			document.add(title);
 
 			// Add table
-			List<String[]> data = fetchDataFromDatabase(startDate, endDate, selectedProjects);
+			List<String[]> data = fetchDataFromDatabase(
+				startDate,
+				endDate,
+				selectedProjects
+			);
 			Object[] tableAndTotal = createTable(data, document, writer, event);
 			PdfPTable table = (PdfPTable) tableAndTotal[0];
 			double totalTime = (Double) tableAndTotal[1];
@@ -462,23 +607,35 @@ public class LedgerGUI extends JFrame {
 				"Error generating PDF: " + e.getMessage()
 			);
 		}
-        try {
-            File pdfFile = new File(filePath);
-        if (pdfFile.exists()) {
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().open(pdfFile);
-            } else {
-                JOptionPane.showMessageDialog(this, "Desktop not supported. Unable to open PDF automatically.");
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "PDF file not found: " + filePath);
-        }
-    } catch (IOException ex) {
-        ex.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Error opening PDF: " + ex.getMessage());
-    }
+		try {
+			File pdfFile = new File(filePath);
+			if (pdfFile.exists()) {
+				if (Desktop.isDesktopSupported()) {
+					Desktop.getDesktop().open(pdfFile);
+				} else {
+					JOptionPane.showMessageDialog(
+						this,
+						"Desktop not supported. Unable to open PDF automatically."
+					);
+				}
+			} else {
+				JOptionPane.showMessageDialog(
+					this,
+					"PDF file not found: " + filePath
+				);
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace();
+			JOptionPane.showMessageDialog(
+				this,
+				"Error opening PDF: " + ex.getMessage()
+			);
+		}
 
-    JOptionPane.showMessageDialog(this, "PDF report generated and opened: " + filePath);
+		JOptionPane.showMessageDialog(
+			this,
+			"PDF report generated and opened: " + filePath
+		);
 	}
 
 	private Object[] createTable(
@@ -743,36 +900,49 @@ public class LedgerGUI extends JFrame {
 		}
 	}
 
-	private List<String[]> fetchDataFromDatabase(String startDate, String endDate, List<String> selectedProjects) {
-        List<String[]> data = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(DB_URL);
-            PreparedStatement pstmt = conn.prepareStatement(
-                "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? AND project IN ("
-                    + String.join(",", Collections.nCopies(selectedProjects.size(), "?")) + ") ORDER BY date")) {
+	private List<String[]> fetchDataFromDatabase(
+		String startDate,
+		String endDate,
+		List<String> selectedProjects
+	) {
+		List<String[]> data = new ArrayList<>();
+		try (
+			Connection conn = DriverManager.getConnection(DB_URL);
+			PreparedStatement pstmt = conn.prepareStatement(
+				"SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? AND project IN (" +
+				String.join(
+					",",
+					Collections.nCopies(selectedProjects.size(), "?")
+				) +
+				") ORDER BY date"
+			)
+		) {
+			pstmt.setString(1, startDate);
+			pstmt.setString(2, endDate);
+			for (int i = 0; i < selectedProjects.size(); i++) {
+				pstmt.setString(i + 3, selectedProjects.get(i));
+			}
 
-            pstmt.setString(1, startDate);
-            pstmt.setString(2, endDate);
-            for (int i = 0; i < selectedProjects.size(); i++) {
-                pstmt.setString(i + 3, selectedProjects.get(i));
-            }
+			ResultSet rs = pstmt.executeQuery();
 
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                String[] row = {
-                    rs.getString("date"),
-                    rs.getString("student"),
-                    rs.getString("subject"),
-                    rs.getString("school"),
-                    rs.getString("project"),
-                    rs.getString("time"),
-                };
-                data.add(row);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Error fetching data: " + e.getMessage());
-        }
-        return data;
-    }
+			while (rs.next()) {
+				String[] row = {
+					rs.getString("date"),
+					rs.getString("student"),
+					rs.getString("subject"),
+					rs.getString("school"),
+					rs.getString("project"),
+					rs.getString("time"),
+				};
+				data.add(row);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			JOptionPane.showMessageDialog(
+				this,
+				"Error fetching data: " + e.getMessage()
+			);
+		}
+		return data;
+	}
 }
