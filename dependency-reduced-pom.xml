@@ -3,7 +3,28 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
   <artifactId>ledger-gui</artifactId>
+  <name>Braille Transcriotion Ledger</name>
   <version>2024.0.0-beta</version>
+  <description>Braille Transcription Ledger</description>
+  <developers>
+    <developer>
+      <id>mrhunsaker</id>
+      <name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
+      <email>hunsakerconsulting@gmail.com</email>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>manual</distribution>
+      <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
+  <organization>
+    <name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
+    <url>https://github.com/mrhunsaker/</url>
+  </organization>
   <build>
     <plugins>
       <plugin>
@@ -48,6 +69,9 @@
       </plugin>
     </plugins>
   </reporting>
+  <distributionManagement>
+    <downloadUrl>https://github.com/mrhunsaker/BrailleTranscriptionLedger</downloadUrl>
+  </distributionManagement>
   <properties>
     <maven.compiler.target>21</maven.compiler.target>
     <maven.compiler.source>21</maven.compiler.source>

@@ -105,7 +105,8 @@ public class LedgerGUI extends JFrame {
 						LedgerGUI.this,
 						"Braille Transcription Ledger\n" +
 						"Version 2024.0.0-beta\n" +
-						"© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D. All rights reserved.",
+						"© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.\n" +
+						"All rights reserved.",
 						"About",
 						JOptionPane.INFORMATION_MESSAGE
 					);
@@ -141,7 +142,9 @@ public class LedgerGUI extends JFrame {
 			inputPanel,
 			"<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
 			dateField = new JTextField()
+			//dateField.setText(formattedDate)
 		);
+		dateField.setText(LocalDate.now().toString());
 		addLabelAndField(
 			inputPanel,
 			"<html>Student: <br><i>(First Two Letters of First and Last Name)</i></html>",
@@ -499,7 +502,6 @@ public class LedgerGUI extends JFrame {
 
 	private void clearInputFields() {
 		LocalDate currentDate = LocalDate.now();
-
 		// Format the date
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 		String formattedDate = currentDate.format(formatter);
