@@ -1,4 +1,18 @@
-
+/****************************************************************************
+ * Copyright 2024  Michael Ryan Hunsaker, M.Ed., Ph.D.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *****************************************************************************/
 import com.formdev.flatlaf.intellijthemes.*;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
@@ -24,10 +38,38 @@ import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * The `LedgerGUI` class is a Swing-based application that provides a graphical user interface for managing a ledger.
+ * The ledger is used to track the work performed by students on various projects, including the date, student, subject,
+ * school, project, time spent, and completion status.
+ * <p>
+ * The application allows the user to input new ledger entries, view the existing entries in a table, and generate a
+ * PDF report for a specified date range and selected projects.
+ * <p>
+ * The application uses a SQLite database to store the ledger data and supports various features, such as:
+ * <ul>
+ *     <li>Saving new ledger entries to the database</li>
+ *     <li>Retrieving and displaying existing ledger entries in a table</li>
+ *     <li>Generating a PDF report for a specified date range and selected projects</li>
+ *     <li>Customizing the application's appearance using various IntelliJ IDEA-inspired themes</li>
+ * </ul>
+ * <p>
+ * The `LedgerGUI` class extends the `JFrame` class and provides the main entry point for the application. It
+ * initializes the database, creates the GUI components, and handles user interactions.
+ *
+ * @author Michael Ryan Hunsaker, M.Ed., Ph.D.
+ * @version 2024.0.0
+ */
+
 public class LedgerGUI extends JFrame {
 
+    /**
+     * A static map that stores the available IntelliJ IDEA-inspired themes for the application.
+     */
     private static final Map<
-        String, Class<? extends LookAndFeel>> INTELLIJ_THEMES = new TreeMap<>();
+        String,
+        Class<? extends LookAndFeel>
+    > INTELLIJ_THEMES = new TreeMap<>();
 
     static {
         INTELLIJ_THEMES.put("Arc", FlatArcIJTheme.class);
@@ -39,15 +81,15 @@ public class LedgerGUI extends JFrame {
         INTELLIJ_THEMES.put("Dracula", FlatDraculaIJTheme.class);
         INTELLIJ_THEMES.put("Gray", FlatGrayIJTheme.class);
         INTELLIJ_THEMES.put(
-                "Gruvbox Dark Hard",
-                FlatGruvboxDarkHardIJTheme.class
+            "Gruvbox Dark Hard",
+            FlatGruvboxDarkHardIJTheme.class
         );
         INTELLIJ_THEMES.put("Hiberbee Dark", FlatHiberbeeDarkIJTheme.class);
         INTELLIJ_THEMES.put("High Contrast", FlatHighContrastIJTheme.class);
         INTELLIJ_THEMES.put("Light Flat", FlatLightFlatIJTheme.class);
         INTELLIJ_THEMES.put(
-                "Material Design Dark",
-                FlatMaterialDesignDarkIJTheme.class
+            "Material Design Dark",
+            FlatMaterialDesignDarkIJTheme.class
         );
         INTELLIJ_THEMES.put("Monocai", FlatMonocaiIJTheme.class);
         INTELLIJ_THEMES.put("Nord", FlatNordIJTheme.class);
@@ -58,25 +100,62 @@ public class LedgerGUI extends JFrame {
         INTELLIJ_THEMES.put("Vuesion", FlatVuesionIJTheme.class);
     }
 
+    /**
+     * A text field for entering the date.
+     */
     private final JTextField dateField;
+    /**
+     * A text field for entering the time.
+     */
     private final JTextField timeField;
+    /**
+     * A text area for entering notes.
+     */
     private final JTextArea notesField;
-    private final JComboBox<
-            String> projectField;
-    private final JComboBox<
-            String> schoolField;
-    private final JComboBox<
-            String> studentField;
-    private final JComboBox<
-            String> subjectField;
+    /**
+     * A combo box for selecting the project.
+     */
+    private final JComboBox<String> projectField;
+    /**
+     * A combo box for selecting the school.
+     */
+    private final JComboBox<String> schoolField;
+    /**
+     * A combo box for selecting the Student.
+     */
+    private final JComboBox<String> studentField;
+    /**
+     * A combo box for selecting the subject.
+     */
+    private final JComboBox<String> subjectField;
+    /**
+     * A checkbox for indicating the completion status.
+     */
     private final JCheckBox completeCheckBox;
+    /**
+     * A button for submitting the data.
+     */
     private final JButton submitButton;
+    /**
+     * A button for generating a PDF report.
+     */
     private final JButton generatePdfButton;
+    /**
+     * The table displaying the ledger entries.
+     */
     private final JTable dataTable;
+    /**
+     * The table model for the data table.
+     */
     private final DefaultTableModel tableModel;
-
+    /**
+     * The URL of the SQLite database used by the application.
+     */
     private static final String DB_URL = "jdbc:sqlite:ledger.db";
 
+    /**
+     * Constructs a new `LedgerGUI` instance and initializes the application's components.
+     */
     public LedgerGUI() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         double widthPercentage = 0.67; // 67% of screen width
@@ -87,8 +166,8 @@ public class LedgerGUI extends JFrame {
         setTitle("Accessible Document Generation Ledger");
         setSize(appWidth, appHeight);
         setLocation(
-                (screenWidth - appWidth) / 2,
-                (screenHeight - appHeight) / 2
+            (screenWidth - appWidth) / 2,
+            (screenHeight - appHeight) / 2
         );
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -99,13 +178,15 @@ public class LedgerGUI extends JFrame {
         JMenu themeMenu = new JMenu("Themes");
         JMenuItem aboutMenuItem = new JMenuItem("About");
         aboutMenuItem.addActionListener((ActionEvent e) -> {
-            JOptionPane.showMessageDialog(LedgerGUI.this, """
-                                                                      Accessible Document Generation Ledger
-                                                                      Version 2024.0.0-beta
-                                                                      \u00a9 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.
-                                                                      All rights reserved.""",
-                    "About",
-                    JOptionPane.INFORMATION_MESSAGE
+            JOptionPane.showMessageDialog(
+                LedgerGUI.this,
+                """
+                Accessible Document Generation Ledger
+                Version 2024.0.0-beta
+                \u00a9 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.
+                All rights reserved.""",
+                "About",
+                JOptionPane.INFORMATION_MESSAGE
             );
         });
         JMenuItem exitMenuItem = new JMenuItem("Exit");
@@ -129,10 +210,10 @@ public class LedgerGUI extends JFrame {
         inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         addLabelAndField(
-                inputPanel,
-                "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
-                dateField = new JTextField()
-        //dateField.setText(formattedDate)
+            inputPanel,
+            "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
+            dateField = new JTextField()
+            //dateField.setText(formattedDate)
         );
         String[] studentOptions = {
             "AlPu",
@@ -244,31 +325,33 @@ public class LedgerGUI extends JFrame {
             "WeHe",
             "WiHa",
             "YaVa",
-            "ZoFe",};
+            "ZoFe",
+        };
         dateField.setText(LocalDate.now().toString());
         addLabelAndField(
-                inputPanel,
-                "<html>Student: <br><i>(First Two Letters of First and Last Name)</i></html>",
-                studentField = new JComboBox<>(studentOptions)
+            inputPanel,
+            "<html>Student: <br><i>(First Two Letters of First and Last Name)</i></html>",
+            studentField = new JComboBox<>(studentOptions)
         );
         subjectField = new JComboBox<>(
-                new String[]{
-                    "Math",
-                    "English",
-                    "Chemistry",
-                    "Biology",
-                    "Health",
-                    "Social Studies",
-                    "Art",
-                    "Music",
-                    "Library",
-                    "Computer Lab",
-                    "Other",}
+            new String[] {
+                "Math",
+                "English",
+                "Chemistry",
+                "Biology",
+                "Health",
+                "Social Studies",
+                "Art",
+                "Music",
+                "Library",
+                "Computer Lab",
+                "Other",
+            }
         );
         addLabelAndField(
-                inputPanel,
-                "<html>Academic Subject</html>",
-                subjectField
+            inputPanel,
+            "<html>Academic Subject</html>",
+            subjectField
         );
         String[] schoolOptions = {
             "Adelaide Elementary",
@@ -360,7 +443,8 @@ public class LedgerGUI extends JFrame {
             "Northridge High",
             "Syracuse High",
             "Viewmont High",
-            "Woods Cross High",};
+            "Woods Cross High",
+        };
         schoolField = new JComboBox<>(schoolOptions);
 
         addLabelAndField(inputPanel, "School", schoolField);
@@ -370,22 +454,23 @@ public class LedgerGUI extends JFrame {
             "Tactile Graphics Generation",
             "Large Print Generation",
             "3D Print Rendering",
-            "3D Print Production",};
+            "3D Print Production",
+        };
         projectField = new JComboBox<>(projectOptions);
         addLabelAndField(inputPanel, "Project Type", projectField);
         addLabelAndField(
-                inputPanel,
-                "<html>Time: <br>(Rounded UP to Nearest .25 hr fter 5 min)</html>",
-                timeField = new JTextField()
+            inputPanel,
+            "<html>Time: <br>(Rounded UP to Nearest .25 hr fter 5 min)</html>",
+            timeField = new JTextField()
         );
         notesField = new JTextArea();
         notesField.setLineWrap(true);
         notesField.setWrapStyleWord(true);
         JScrollPane notesScrollPane = new JScrollPane(notesField);
         addLabelAndField(
-                inputPanel,
-                "<html>Process Notes:</html>",
-                notesScrollPane
+            inputPanel,
+            "<html>Process Notes:</html>",
+            notesScrollPane
         );
         JLabel completeLabel = new JLabel("Complete:");
         completeCheckBox = new JCheckBox();
@@ -394,27 +479,27 @@ public class LedgerGUI extends JFrame {
         inputPanel.add(completeCheckBox);
         completeCheckBox.setMnemonic(KeyEvent.VK_C);
         completeCheckBox
-                .getAccessibleContext()
-                .setAccessibleDescription("Check if the task is complete");
+            .getAccessibleContext()
+            .setAccessibleDescription("Check if the task is complete");
         submitButton = new JButton("Submit");
         submitButton.setMnemonic(KeyEvent.VK_S);
         submitButton.addActionListener(e -> submitData());
         submitButton
-                .getAccessibleContext()
-                .setAccessibleDescription(
-                        "Submit the entered data to the database"
-                );
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Submit the entered data to the database"
+            );
         generatePdfButton = new JButton("Generate PDF Report");
         generatePdfButton.setMnemonic(KeyEvent.VK_G);
         generatePdfButton.addActionListener(e -> showDateRangeDialog());
         generatePdfButton
-                .getAccessibleContext()
-                .setAccessibleDescription(
-                        "Generate a PDF report for a specified date range"
-                );
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Generate a PDF report for a specified date range"
+            );
 
         JPanel buttonPanel = new JPanel(
-                new FlowLayout(FlowLayout.CENTER, 10, 0)
+            new FlowLayout(FlowLayout.CENTER, 10, 0)
         );
         buttonPanel.add(submitButton);
         buttonPanel.add(generatePdfButton);
@@ -424,19 +509,20 @@ public class LedgerGUI extends JFrame {
 
         // Table
         tableModel = new DefaultTableModel(
-                new String[]{
-                    "Date",
-                    "Student",
-                    "Subject",
-                    "School",
-                    "Project",
-                    "Time",},
-                0
+            new String[] {
+                "Date",
+                "Student",
+                "Subject",
+                "School",
+                "Project",
+                "Time",
+            },
+            0
         );
         dataTable = new JTable(tableModel);
         dataTable
-                .getAccessibleContext()
-                .setAccessibleDescription("Table showing ledger entries");
+            .getAccessibleContext()
+            .setAccessibleDescription("Table showing ledger entries");
         dataTable.setEnabled(false);
         JScrollPane scrollPane = new JScrollPane(dataTable);
         add(scrollPane, BorderLayout.CENTER);
@@ -449,144 +535,162 @@ public class LedgerGUI extends JFrame {
         setFocusCycleRoot(true);
     }
 
+    /**
+     * Adds a label and a field component to the specified panel.
+     *
+     * @param panel   the panel to add the label and field to
+     * @param labelText the text for the label
+     * @param field   the field component to add
+     */
     private void addLabelAndField(
-            JPanel panel,
-            String labelText,
-            JComponent field
+        JPanel panel,
+        String labelText,
+        JComponent field
     ) {
         JLabel label = new JLabel(labelText);
         label.setLabelFor(field);
         panel.add(label);
         panel.add(field);
         field
-                .getAccessibleContext()
-                .setAccessibleDescription("Enter " + labelText.toLowerCase());
+            .getAccessibleContext()
+            .setAccessibleDescription("Enter " + labelText.toLowerCase());
     }
 
+    /**
+     * Cleans the input by removing any characters that might cause issues with SQLite.
+     *
+     * @param input the input string to clean
+     * @return the cleaned input string
+     */
     private String cleanInput(String input) {
         // Remove any characters that might cause issues with SQLite
         // This example removes quotes and escapes backslashes
         return input
-                .replace("'", "''")
-                .replace("\"", "\"\"")
-                .replace("\\", "\\\\");
+            .replace("'", "''")
+            .replace("\"", "\"\"")
+            .replace("\\", "\\\\");
     }
 
+    /**
+     * Shows a dialog for entering the date range and selecting the projects to generate a PDF report.
+     */
     private void showDateRangeDialog() {
         JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
         JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
         JComboBox studentMaterial = new JComboBox<>(
-                new String[]{
-                    "AlPu",
-                    "AlRo",
-                    "AmRi",
-                    "AmOl",
-                    "AsNe",
-                    "AvWi",
-                    "BaAl",
-                    "BeWi",
-                    "BoUt",
-                    "BrTi",
-                    "CaDa",
-                    "CaHe",
-                    "CeNe",
-                    "ChTr",
-                    "ChCh",
-                    "ChGr",
-                    "ClPe",
-                    "CoBl",
-                    "CoCo",
-                    "CoHa",
-                    "CoBu",
-                    "CoHa",
-                    "CrPe",
-                    "CrAn",
-                    "DaCa",
-                    "DyPe",
-                    "ElLe",
-                    "ElWh",
-                    "ElSt",
-                    "EmTh",
-                    "EmTo",
-                    "EvCo",
-                    "FrAn",
-                    "FrLe",
-                    "GeBr",
-                    "GrDa",
-                    "GrCh",
-                    "HaGa",
-                    "HaHa",
-                    "HeUt",
-                    "HiWh",
-                    "HuHa",
-                    "HuTr",
-                    "InJo",
-                    "JaKa",
-                    "JaPe",
-                    "JaAb",
-                    "JaSm",
-                    "JeLe",
-                    "JuMa",
-                    "JuBa",
-                    "KaSt",
-                    "KaBr",
-                    "KaVi",
-                    "KaWa",
-                    "KeJo",
-                    "KeBy",
-                    "KiCh",
-                    "KiEl",
-                    "KiAg",
-                    "KiMi",
-                    "LaZa",
-                    "LaUl",
-                    "LaGr",
-                    "LaLe",
-                    "LaAr",
-                    "LiVa",
-                    "LiHo",
-                    "LuKi",
-                    "LuMo",
-                    "LyPe",
-                    "MaMc",
-                    "MaHa",
-                    "MaWi",
-                    "MaMa",
-                    "MaBl",
-                    "MaHe",
-                    "MaHe",
-                    "MeSc",
-                    "MiCo",
-                    "MiWe",
-                    "MiBe",
-                    "MoSt",
-                    "NaBu",
-                    "OlPa",
-                    "OlEv",
-                    "PaSa",
-                    "PeLa",
-                    "PrPe",
-                    "RaSc",
-                    "RaBa",
-                    "RoSo",
-                    "RyWe",
-                    "SaWi",
-                    "SaHi",
-                    "ScUt",
-                    "TaTi",
-                    "TaTr",
-                    "ThLl",
-                    "TjGu",
-                    "TrWe",
-                    "TrHa",
-                    "TrKe",
-                    "TyAs",
-                    "TyGr",
-                    "WeUt",
-                    "WeHe",
-                    "WiHa",
-                    "YaVa",
-                    "ZoFe",});
+            new String[] {
+                "AlPu",
+                "AlRo",
+                "AmRi",
+                "AmOl",
+                "AsNe",
+                "AvWi",
+                "BaAl",
+                "BeWi",
+                "BoUt",
+                "BrTi",
+                "CaDa",
+                "CaHe",
+                "CeNe",
+                "ChTr",
+                "ChCh",
+                "ChGr",
+                "ClPe",
+                "CoBl",
+                "CoCo",
+                "CoHa",
+                "CoBu",
+                "CoHa",
+                "CrPe",
+                "CrAn",
+                "DaCa",
+                "DyPe",
+                "ElLe",
+                "ElWh",
+                "ElSt",
+                "EmTh",
+                "EmTo",
+                "EvCo",
+                "FrAn",
+                "FrLe",
+                "GeBr",
+                "GrDa",
+                "GrCh",
+                "HaGa",
+                "HaHa",
+                "HeUt",
+                "HiWh",
+                "HuHa",
+                "HuTr",
+                "InJo",
+                "JaKa",
+                "JaPe",
+                "JaAb",
+                "JaSm",
+                "JeLe",
+                "JuMa",
+                "JuBa",
+                "KaSt",
+                "KaBr",
+                "KaVi",
+                "KaWa",
+                "KeJo",
+                "KeBy",
+                "KiCh",
+                "KiEl",
+                "KiAg",
+                "KiMi",
+                "LaZa",
+                "LaUl",
+                "LaGr",
+                "LaLe",
+                "LaAr",
+                "LiVa",
+                "LiHo",
+                "LuKi",
+                "LuMo",
+                "LyPe",
+                "MaMc",
+                "MaHa",
+                "MaWi",
+                "MaMa",
+                "MaBl",
+                "MaHe",
+                "MaHe",
+                "MeSc",
+                "MiCo",
+                "MiWe",
+                "MiBe",
+                "MoSt",
+                "NaBu",
+                "OlPa",
+                "OlEv",
+                "PaSa",
+                "PeLa",
+                "PrPe",
+                "RaSc",
+                "RaBa",
+                "RoSo",
+                "RyWe",
+                "SaWi",
+                "SaHi",
+                "ScUt",
+                "TaTi",
+                "TaTr",
+                "ThLl",
+                "TjGu",
+                "TrWe",
+                "TrHa",
+                "TrKe",
+                "TyAs",
+                "TyGr",
+                "WeUt",
+                "WeHe",
+                "WiHa",
+                "YaVa",
+                "ZoFe",
+            }
+        );
         // Create checkboxes for project options
         String[] projectOptions = {
             "UEB Literary Transcription",
@@ -594,7 +698,8 @@ public class LedgerGUI extends JFrame {
             "Tactile Graphics Generation",
             "Large Print Generation",
             "3D Print Rendering",
-            "3D Print Production",};
+            "3D Print Production",
+        };
         JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
 
         JPanel panel = new JPanel(new GridBagLayout());
@@ -633,11 +738,11 @@ public class LedgerGUI extends JFrame {
         }
 
         int result = JOptionPane.showConfirmDialog(
-                null,
-                panel,
-                "Enter Date Range and Select Projects",
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE
+            null,
+            panel,
+            "Enter Date Range and Select Projects",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
         );
 
         if (result == JOptionPane.OK_OPTION) {
@@ -653,7 +758,11 @@ public class LedgerGUI extends JFrame {
         }
     }
 
-    // Helper methods to get current date and previous month end date
+    /**
+     * Retrieves the 15th day of the current month as a string in the format "yyyy-MM-dd".
+     *
+     * @return the current month's 15th day as a string
+     */
     public String getCurrentMonth15th() {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, 15); // Set day to 15
@@ -661,6 +770,11 @@ public class LedgerGUI extends JFrame {
         return sdf.format(cal.getTime());
     }
 
+    /**
+     * Retrieves the 16th day of the previous month as a string in the format "yyyy-MM-dd".
+     *
+     * @return the previous month's 16th day as a string
+     */
     public String getPreviousMonth16th() {
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.MONTH, -1); // Go back one month
@@ -669,81 +783,117 @@ public class LedgerGUI extends JFrame {
         return sdf.format(cal.getTime());
     }
 
+    /**
+     * The main entry point for the application.
+     * Sets the default look and feel, creates a new `LedgerGUI` instance, and makes it visible.
+     *
+     * @param args the command-line arguments (unused)
+     */
     public static void main(String[] args) {
         // Set the look and feel to the system look and feel
         String defaultTheme = "Cobalt 2"; // or any other theme name from the map
         try {
             UIManager.setLookAndFeel(
-                    INTELLIJ_THEMES.get(defaultTheme)
-                            .getDeclaredConstructor()
-                            .newInstance()
+                INTELLIJ_THEMES.get(defaultTheme)
+                    .getDeclaredConstructor()
+                    .newInstance()
             );
             UIManager.put(
-                    "defaultFont",
-                    new FontUIResource(
-                            new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
-                    )
+                "defaultFont",
+                new FontUIResource(
+                    new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
+                )
             ); // Example font size 16
-        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException | SecurityException | InvocationTargetException | UnsupportedLookAndFeelException ex) {
-        }
+        } catch (
+            IllegalAccessException
+            | IllegalArgumentException
+            | InstantiationException
+            | NoSuchMethodException
+            | SecurityException
+            | InvocationTargetException
+            | UnsupportedLookAndFeelException ex
+        ) {}
 
         SwingUtilities.invokeLater(() -> {
             new LedgerGUI().setVisible(true);
         });
     }
 
+    /**
+     * Sets the specified IntelliJ IDEA-inspired theme for the application.
+     *
+     * @param themeName the name of the theme to set
+     */
     private void setIntelliJTheme(String themeName) {
         try {
             Class<? extends LookAndFeel> themeClass = INTELLIJ_THEMES.get(
-                    themeName
+                themeName
             );
             if (themeClass != null) {
                 UIManager.setLookAndFeel(
-                        themeClass.getDeclaredConstructor().newInstance()
+                    themeClass.getDeclaredConstructor().newInstance()
                 );
                 UIManager.put(
-                        "defaultFont",
-                        new FontUIResource(
-                                new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
-                        )
+                    "defaultFont",
+                    new FontUIResource(
+                        new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
+                    )
                 ); // Example font size 16
                 SwingUtilities.updateComponentTreeUI(this);
             } else {
                 System.err.println("Theme not found: " + themeName);
             }
-        } catch (IllegalAccessException | IllegalArgumentException | InstantiationException | NoSuchMethodException | SecurityException | InvocationTargetException | UnsupportedLookAndFeelException ex) {
-        }
+        } catch (
+            IllegalAccessException
+            | IllegalArgumentException
+            | InstantiationException
+            | NoSuchMethodException
+            | SecurityException
+            | InvocationTargetException
+            | UnsupportedLookAndFeelException ex
+        ) {}
     }
 
+    /**
+     * Initializes the SQLite database used by the application.
+     */
     private void initializeDatabase() {
         try (
-                Connection conn = DriverManager.getConnection(DB_URL); Statement stmt = conn.createStatement()) {
-            String sql
-                    = "CREATE TABLE IF NOT EXISTS ledger "
-                    + "(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                    + "date TEXT NOT NULL, "
-                    + "student TEXT NOT NULL,"
-                    + "subject TEXT NOT NULL,"
-                    + "school TEXT NOT NULL, "
-                    + "project TEXT NOT NULL, "
-                    + "time TEXT NOT NULL, "
-                    + "notes TEXT NOT NULL,"
-                    + "complete BOOLEAN NOT NULL)";
+            Connection conn = DriverManager.getConnection(DB_URL);
+            Statement stmt = conn.createStatement()
+        ) {
+            String sql =
+                "CREATE TABLE IF NOT EXISTS ledger " +
+                "(id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "date TEXT NOT NULL, " +
+                "student TEXT NOT NULL," +
+                "subject TEXT NOT NULL," +
+                "school TEXT NOT NULL, " +
+                "project TEXT NOT NULL, " +
+                "time TEXT NOT NULL, " +
+                "notes TEXT NOT NULL," +
+                "complete BOOLEAN NOT NULL)";
             stmt.execute(sql);
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(
-                    this,
-                    "Error initializing database: " + e.getMessage()
+                this,
+                "Error initializing database: " + e.getMessage()
             );
         }
     }
 
+    /**
+     * Loads the existing ledger data from the database and populates the data table.
+     */
     private void loadDataFromDatabase() {
         tableModel.setRowCount(0);
         try (
-                Connection conn = DriverManager.getConnection(DB_URL); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(
+            Connection conn = DriverManager.getConnection(DB_URL);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(
                 "SELECT date, student, subject, school, project, time FROM ledger"
-        )) {
+            )
+        ) {
             while (rs.next()) {
                 Object[] row = {
                     rs.getString("date"),
@@ -751,25 +901,30 @@ public class LedgerGUI extends JFrame {
                     rs.getString("subject"),
                     rs.getString("school"),
                     rs.getString("project"),
-                    rs.getString("time"),};
+                    rs.getString("time"),
+                };
                 tableModel.addRow(row);
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(
-                    this,
-                    "Error loading data: " + e.getMessage()
+                this,
+                "Error loading data: " + e.getMessage()
             );
         }
     }
 
+    /**
+     * Handles the submission of new ledger data.
+     * Saves the data to the database and updates the data table.
+     */
     private void submitData() {
         String date = dateField.getText();
         String school = schoolField.getSelectedItem().toString();
         String student = studentField.getSelectedItem().toString();
         if (!student.matches("[A-Z][a-z][A-Z][a-z]")) {
             JOptionPane.showMessageDialog(
-                    this,
-                    "Student field must be in the format XxXx (e.g., AbCd)"
+                this,
+                "Student field must be in the format XxXx (e.g., AbCd)"
             );
             return;
         }
@@ -780,9 +935,11 @@ public class LedgerGUI extends JFrame {
         boolean complete = completeCheckBox.isSelected();
 
         try (
-                Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
                 "INSERT INTO ledger (date, student, subject, school, project, time, notes, complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        )) {
+            )
+        ) {
             pstmt.setString(1, date);
             pstmt.setString(2, student);
             pstmt.setString(3, subject);
@@ -795,8 +952,8 @@ public class LedgerGUI extends JFrame {
             pstmt.executeUpdate();
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(
-                    this,
-                    "Error saving data: " + e.getMessage()
+                this,
+                "Error saving data: " + e.getMessage()
             );
             return;
         }
@@ -806,6 +963,9 @@ public class LedgerGUI extends JFrame {
         clearInputFields();
     }
 
+    /**
+     * Clears the input fields in the application.
+     */
     private void clearInputFields() {
         LocalDate currentDate = LocalDate.now();
         // Format the date
@@ -817,10 +977,17 @@ public class LedgerGUI extends JFrame {
         completeCheckBox.setSelected(false);
     }
 
+    /**
+     * Generates a PDF report for the specified date range and selected projects.
+     *
+     * @param startDate         the start date for the report
+     * @param endDate           the end date for the report
+     * @param selectedProjects  the list of selected projects to include in the report
+     */
     private void generatePdfReport(
-            String startDate,
-            String endDate,
-            List<String> selectedProjects
+        String startDate,
+        String endDate,
+        List<String> selectedProjects
     ) {
         String filePath = "";
         try {
@@ -828,15 +995,15 @@ public class LedgerGUI extends JFrame {
             String userHome = System.getProperty("user.home");
             String downloadsDir = userHome + "/Downloads/";
 
-            String fileName
-                    = "LedgerReport_" + startDate + "_to_" + endDate + ".pdf";
+            String fileName =
+                "LedgerReport_" + startDate + "_to_" + endDate + ".pdf";
 
             filePath = downloadsDir + fileName;
 
             Document document = new Document(PageSize.LETTER, 36, 36, 108, 72); // top margin increased to 1.5 inches (108 points)
             PdfWriter writer = PdfWriter.getInstance(
-                    document,
-                    new FileOutputStream(filePath)
+                document,
+                new FileOutputStream(filePath)
             );
 
             HeaderFooterPageEvent event = new HeaderFooterPageEvent();
@@ -846,12 +1013,12 @@ public class LedgerGUI extends JFrame {
 
             // Add title "INVOICE"
             Paragraph title = new Paragraph(
-                    "INVOICE: " + startDate + " to " + endDate,
-                    new com.itextpdf.text.Font(
-                            com.itextpdf.text.Font.FontFamily.HELVETICA,
-                            16,
-                            com.itextpdf.text.Font.BOLD
-                    )
+                "INVOICE: " + startDate + " to " + endDate,
+                new com.itextpdf.text.Font(
+                    com.itextpdf.text.Font.FontFamily.HELVETICA,
+                    16,
+                    com.itextpdf.text.Font.BOLD
+                )
             );
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingBefore(28.35f); // 1 cm spacing after header
@@ -860,9 +1027,9 @@ public class LedgerGUI extends JFrame {
 
             // Add table
             List<String[]> data = fetchDataFromDatabase(
-                    startDate,
-                    endDate,
-                    selectedProjects
+                startDate,
+                endDate,
+                selectedProjects
             );
             Object[] tableAndTotal = createTable(data, document, writer, event);
             PdfPTable table = (PdfPTable) tableAndTotal[0];
@@ -873,12 +1040,12 @@ public class LedgerGUI extends JFrame {
             // Add total
             DecimalFormat df = new DecimalFormat("#,##0.00");
             Paragraph totalParagraph = new Paragraph(
-                    "Total Billed Hours: " + df.format(totalTime),
-                    new com.itextpdf.text.Font(
-                            com.itextpdf.text.Font.FontFamily.HELVETICA,
-                            12,
-                            com.itextpdf.text.Font.BOLD
-                    )
+                "Total Billed Hours: " + df.format(totalTime),
+                new com.itextpdf.text.Font(
+                    com.itextpdf.text.Font.FontFamily.HELVETICA,
+                    12,
+                    com.itextpdf.text.Font.BOLD
+                )
             );
             totalParagraph.setAlignment(Element.ALIGN_RIGHT);
             document.add(totalParagraph);
@@ -897,8 +1064,8 @@ public class LedgerGUI extends JFrame {
             document.close();
         } catch (DocumentException | FileNotFoundException e) {
             JOptionPane.showMessageDialog(
-                    this,
-                    "Error generating PDF: " + e.getMessage()
+                this,
+                "Error generating PDF: " + e.getMessage()
             );
         }
         try {
@@ -908,51 +1075,60 @@ public class LedgerGUI extends JFrame {
                     Desktop.getDesktop().open(pdfFile);
                 } else {
                     JOptionPane.showMessageDialog(
-                            this,
-                            "Desktop not supported. Unable to open PDF automatically."
+                        this,
+                        "Desktop not supported. Unable to open PDF automatically."
                     );
                 }
             } else {
                 JOptionPane.showMessageDialog(
-                        this,
-                        "PDF file not found: " + filePath
+                    this,
+                    "PDF file not found: " + filePath
                 );
             }
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "File written to  " + filePath
-            );
+            JOptionPane.showMessageDialog(this, "File written to  " + filePath);
         }
     }
 
+    /**
+     * Creates a PDF table for the ledger data and returns the table and the total time.
+     *
+     * @param data      the data to be included in the table
+     * @param document  the PDF document to add the table to
+     * @param writer    the PDF writer to use
+     * @param event     the header/footer event handler
+     * @return an array containing the created PDF table and the total time
+     * @throws DocumentException if there is an error creating the PDF table
+     */
     private Object[] createTable(
-            List<String[]> data,
-            Document document,
-            PdfWriter writer,
-            HeaderFooterPageEvent event
+        List<String[]> data,
+        Document document,
+        PdfWriter writer,
+        HeaderFooterPageEvent event
     ) throws DocumentException {
         double totalTime = 0.0;
         PdfPTable table = new PdfPTable(6);
         table.setWidthPercentage(100);
-        table.setWidths(new float[]{2, 2, 2, 2, 2, 1});
+        table.setWidths(new float[] { 2, 2, 2, 2, 2, 1 });
 
         // Add table headers
-        for (String header : new String[]{
+        for (String header : new String[] {
             "Date",
             "Student",
             "Subject",
             "School",
             "Project",
-            "Time",}) {
+            "Time",
+        }) {
             PdfPCell cell = new PdfPCell(
-                    new Phrase(
-                            header,
-                            new com.itextpdf.text.Font(
-                                    com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                    12,
-                                    com.itextpdf.text.Font.BOLD
-                            )
+                new Phrase(
+                    header,
+                    new com.itextpdf.text.Font(
+                        com.itextpdf.text.Font.FontFamily.HELVETICA,
+                        12,
+                        com.itextpdf.text.Font.BOLD
                     )
+                )
             );
             cell.setBorder(com.itextpdf.text.Rectangle.BOTTOM);
             cell.setBorderColor(BaseColor.LIGHT_GRAY);
@@ -962,20 +1138,20 @@ public class LedgerGUI extends JFrame {
         }
 
         // Calculate available height for table
-        float totalHeight
-                = document.getPageSize().getHeight()
-                - document.topMargin()
-                - document.bottomMargin();
+        float totalHeight =
+            document.getPageSize().getHeight() -
+            document.topMargin() -
+            document.bottomMargin();
         float headerHeight = 108; // 1.5 inches
         float titleHeight = 16 + 28.35f + 5.67f; // Title font size + spacing before and after
         float footerHeight = 50; // Adjust based on your footer height
         float signatureHeight = 20; // Height for signature line
-        float availableHeight
-                = totalHeight
-                - headerHeight
-                - titleHeight
-                - footerHeight
-                - signatureHeight;
+        float availableHeight =
+            totalHeight -
+            headerHeight -
+            titleHeight -
+            footerHeight -
+            signatureHeight;
 
         float rowHeight = 20; // Adjust based on your row height
         int maxRows = (int) (availableHeight / rowHeight);
@@ -985,13 +1161,13 @@ public class LedgerGUI extends JFrame {
             String[] row = data.get(i);
             for (int j = 0; j < row.length; j++) {
                 PdfPCell pdfCell = new PdfPCell(
-                        new Phrase(
-                                row[j],
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        10
-                                )
+                    new Phrase(
+                        row[j],
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            10
                         )
+                    )
                 );
                 pdfCell.setBorder(com.itextpdf.text.Rectangle.NO_BORDER);
                 pdfCell.setPadding(5);
@@ -1018,9 +1194,12 @@ public class LedgerGUI extends JFrame {
             }
         }
 
-        return new Object[]{table, totalTime};
+        return new Object[] { table, totalTime };
     }
 
+    /**
+     * A custom page event handler for adding headers and footers to the PDF report.
+     */
     private class HeaderFooterPageEvent extends PdfPageEventHelper {
 
         private PdfTemplate t;
@@ -1047,13 +1226,13 @@ public class LedgerGUI extends JFrame {
             PdfPTable header = new PdfPTable(1);
             try {
                 // set defaults
-                header.setWidths(new int[]{24});
+                header.setWidths(new int[] { 24 });
                 header.setTotalWidth(527);
                 header.setLockedWidth(true);
                 header.getDefaultCell().setFixedHeight(108); // 1.5 inches
                 header
-                        .getDefaultCell()
-                        .setBorder(com.itextpdf.text.Rectangle.BOTTOM);
+                    .getDefaultCell()
+                    .setBorder(com.itextpdf.text.Rectangle.BOTTOM);
                 header.getDefaultCell().setBorderColor(BaseColor.LIGHT_GRAY);
 
                 // add text
@@ -1063,50 +1242,50 @@ public class LedgerGUI extends JFrame {
                 text.setBorder(com.itextpdf.text.Rectangle.BOTTOM);
                 text.setBorderColor(BaseColor.LIGHT_GRAY);
                 text.addElement(
-                        new Phrase(
-                                " ",
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        12
-                                )
+                    new Phrase(
+                        " ",
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            12
                         )
+                    )
                 );
                 text.addElement(
-                        new Phrase(
-                                "Michael Ryan Hunsaker, M.Ed., Ph.D.",
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        12
-                                )
+                    new Phrase(
+                        "Michael Ryan Hunsaker, M.Ed., Ph.D.",
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            12
                         )
+                    )
                 );
                 text.addElement(
-                        new Phrase(
-                                "Davis School District",
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        12
-                                )
+                    new Phrase(
+                        "Davis School District",
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            12
                         )
+                    )
                 );
                 text.addElement(
-                        new Phrase(
-                                "Farmington, UT 84025",
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        12
-                                )
+                    new Phrase(
+                        "Farmington, UT 84025",
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            12
                         )
+                    )
                 );
                 header.addCell(text);
 
                 // write content
                 header.writeSelectedRows(
-                        0,
-                        -1,
-                        34,
-                        803,
-                        writer.getDirectContent()
+                    0,
+                    -1,
+                    34,
+                    803,
+                    writer.getDirectContent()
                 );
             } catch (DocumentException de) {
                 throw new ExceptionConverter(de);
@@ -1117,38 +1296,38 @@ public class LedgerGUI extends JFrame {
             PdfPTable footer = new PdfPTable(3);
             try {
                 // set defaults
-                footer.setWidths(new int[]{24, 2, 1});
+                footer.setWidths(new int[] { 24, 2, 1 });
                 footer.setTotalWidth(527);
                 footer.setLockedWidth(true);
                 footer.getDefaultCell().setFixedHeight(40);
                 footer
-                        .getDefaultCell()
-                        .setBorder(com.itextpdf.text.Rectangle.TOP);
+                    .getDefaultCell()
+                    .setBorder(com.itextpdf.text.Rectangle.TOP);
                 footer.getDefaultCell().setBorderColor(BaseColor.LIGHT_GRAY);
 
                 // add copyright
                 footer.addCell(
-                        new Phrase(
-                                "© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.. All Rights Reserved.",
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        8
-                                )
+                    new Phrase(
+                        "© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.. All Rights Reserved.",
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            8
                         )
+                    )
                 );
 
                 // add current page count
                 footer
-                        .getDefaultCell()
-                        .setHorizontalAlignment(Element.ALIGN_RIGHT);
+                    .getDefaultCell()
+                    .setHorizontalAlignment(Element.ALIGN_RIGHT);
                 footer.addCell(
-                        new Phrase(
-                                String.format("Page %d of", writer.getPageNumber()),
-                                new com.itextpdf.text.Font(
-                                        com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                        8
-                                )
+                    new Phrase(
+                        String.format("Page %d of", writer.getPageNumber()),
+                        new com.itextpdf.text.Font(
+                            com.itextpdf.text.Font.FontFamily.HELVETICA,
+                            8
                         )
+                    )
                 );
 
                 // add placeholder for total page count
@@ -1172,71 +1351,76 @@ public class LedgerGUI extends JFrame {
             int totalLength = String.valueOf(writer.getPageNumber()).length();
             int totalWidth = totalLength * 5;
             ColumnText.showTextAligned(
-                    t,
-                    Element.ALIGN_RIGHT,
-                    new Phrase(
-                            String.valueOf(writer.getPageNumber()),
-                            new com.itextpdf.text.Font(
-                                    com.itextpdf.text.Font.FontFamily.HELVETICA,
-                                    8
-                            )
-                    ),
-                    totalWidth,
-                    6,
-                    0
+                t,
+                Element.ALIGN_RIGHT,
+                new Phrase(
+                    String.valueOf(writer.getPageNumber()),
+                    new com.itextpdf.text.Font(
+                        com.itextpdf.text.Font.FontFamily.HELVETICA,
+                        8
+                    )
+                ),
+                totalWidth,
+                6,
+                0
             );
         }
     }
 
-    private List<String[]> fetchDataFromDatabase(
+    /**
+     * Fetches the ledger data from the database based on the specified start date, end date, and selected projects.
+     *
+     * @param startDate         the start date for the data
+     * @param endDate           the end date for the data
+     * @param selectedProjects  the list of selected projects to include
+     * @return the fetched ledger data
+     */
+        private List<String[]> fetchDataFromDatabase(
             String startDate,
             String endDate,
             List<String> selectedProjects
-    ) {
-        List<String[]> data = new ArrayList<>();
-        try (
-                Connection conn = DriverManager.getConnection(DB_URL); PreparedStatement pstmt = conn.prepareStatement(
-                "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? "
-                + "AND project IN ("
-                + String.join(
+        ) {
+            List<String[]> data = new ArrayList<>();
+            try (
+                Connection conn = DriverManager.getConnection(DB_URL);
+                PreparedStatement pstmt = conn.prepareStatement(
+                    "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? " +
+                    "AND project IN (" +
+                    String.join(
                         ",",
                         Collections.nCopies(selectedProjects.size(), "?")
+                    ) +
+                    ") " +
+                    "ORDER BY date"
                 )
-                + ") "
-                + "AND student = ? "
-                + // Added student filter
-                "ORDER BY date"
-        )) {
-            pstmt.setString(1, startDate);
-            pstmt.setString(2, endDate);
+            ) {
+                pstmt.setString(1, startDate);
+                pstmt.setString(2, endDate);
 
-            // Set project parameters
-            for (int i = 0; i < selectedProjects.size(); i++) {
-                pstmt.setString(i + 3, selectedProjects.get(i));
-            }
-            String selectedStudent = null;
+                // Set project parameters
+                for (int i = 0; i < selectedProjects.size(); i++) {
+                    pstmt.setString(i + 3, selectedProjects.get(i));
+                }
 
-            // Set student parameter
-            pstmt.setString(selectedProjects.size() + 3, selectedStudent);
+                ResultSet rs = pstmt.executeQuery();
 
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                String[] row = {
-                    rs.getString("date"),
-                    rs.getString("student"),
-                    rs.getString("subject"),
-                    rs.getString("school"),
-                    rs.getString("project"),
-                    rs.getString("time"),};
-                data.add(row);
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(
+                while (rs.next()) {
+                    String[] row = {
+                        rs.getString("date"),
+                        rs.getString("student"),
+                        rs.getString("subject"),
+                        rs.getString("school"),
+                        rs.getString("project"),
+                        rs.getString("time"),
+                    };
+                    data.add(row);
+                }
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(
                     this,
                     "Error fetching data: " + e.getMessage()
-            );
+                );
+            }
+            return data;
         }
-        return data;
-    }
 }

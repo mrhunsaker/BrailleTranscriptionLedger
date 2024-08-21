@@ -1,0 +1,63 @@
+-J-Duser.language=
+-J-Duser.country=
+@options
+@argfile
+-classpath
+'/var/home/ryhunsaker/.m2/repository/org/xerial/sqlite-jdbc/3.46.0.1/sqlite-jdbc-3.46.0.1.jar:/var/home/ryhunsaker/.m2/repository/com/itextpdf/itextpdf/5.5.13.4/itextpdf-5.5.13.4.jar:/var/home/ryhunsaker/.m2/repository/com/formdev/flatlaf/3.5.1/flatlaf-3.5.1.jar:/var/home/ryhunsaker/.m2/repository/com/formdev/flatlaf-intellij-themes/3.5.1/flatlaf-intellij-themes-3.5.1.jar:/var/home/ryhunsaker/.m2/repository/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar:/var/home/ryhunsaker/.m2/repository/ch/qos/logback/logback-classic/1.5.7/logback-classic-1.5.7.jar:/var/home/ryhunsaker/.m2/repository/ch/qos/logback/logback-core/1.5.7/logback-core-1.5.7.jar'
+-encoding
+'UTF-8'
+-protected
+--release
+21
+-sourcepath
+'/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/src/main/java:/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/generated-sources/annotations'
+-author
+-bottom
+'Copyright &#169; 2024 <a href="https://github.com/mrhunsaker/">Michael Ryan Hunsaker, M.Ed., Ph.D.</a>. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs'
+-docencoding
+'UTF-8'
+-doctitle
+'Braille Transcriotion Ledger 2024.0.0 API'
+-use
+-version
+-windowtitle
+'Braille Transcriotion Ledger 2024.0.0 API'
+'/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/src/main/java/LedgerGUI.java'
+/var/home/ryhunsaker/.m2/repository/org/xerial/sqlite-jdbc/3.46.0.1/sqlite-jdbc-3.46.0.1.jar = 1722312111000
+/var/home/ryhunsaker/.m2/repository/com/itextpdf/itextpdf/5.5.13.4/itextpdf-5.5.13.4.jar = 1718282763000
+/var/home/ryhunsaker/.m2/repository/com/formdev/flatlaf/3.5.1/flatlaf-3.5.1.jar = 1722875751000
+/var/home/ryhunsaker/.m2/repository/com/formdev/flatlaf-intellij-themes/3.5.1/flatlaf-intellij-themes-3.5.1.jar = 1722875779000
+/var/home/ryhunsaker/.m2/repository/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar = 1723281306000
+/var/home/ryhunsaker/.m2/repository/ch/qos/logback/logback-classic/1.5.7/logback-classic-1.5.7.jar = 1723739841000
+/var/home/ryhunsaker/.m2/repository/ch/qos/logback/logback-core/1.5.7/logback-core-1.5.7.jar = 1723739812000
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/src/main/java/LedgerGUI.java = 1724281690689
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/src/main/java = 1724279885526
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/generated-sources/annotations = 1724281702805
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/LedgerGUI.html = 1724281708119
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/element-list = 1724281708121
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/package-summary.html = 1724281708131
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/package-tree.html = 1724281708139
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/serialized-form.html = 1724281708174
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/package-use.html = 1724281708187
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/overview-tree.html = 1724281708192
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/allclasses-index.html = 1724281708208
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/allpackages-index.html = 1724281708211
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/module-search-index.js = 1724281708212
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/package-search-index.js = 1724281708212
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/type-search-index.js = 1724281708213
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/member-search-index.js = 1724281708213
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/tag-search-index.js = 1724281708213
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/index-all.html = 1724281708224
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/search.html = 1724281708227
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/index.html = 1724281708229
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/help-doc.html = 1724281708235
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/stylesheet.css = 1724281708238
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/script.js = 1724281708239
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/copy.svg = 1724281708240
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/link.svg = 1724281708240
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/search.js = 1724281708243
+/var/home/ryhunsaker/GitHubRepos/BrailleTranscriptionLedger/target/apidocs/search-page.js = 1724281708244
