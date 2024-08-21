@@ -1,0 +1,41 @@
+{
+    "tasks": [
+        {
+            "type": "java (buildArtifact)",
+            "runOptions": {},
+            "label": "java (buildArtifact): Ledger",
+            "mainClass": "LedgerGUI",
+            "targetPath": "${workspaceFolder}/${workspaceFolderBasename}.jar",
+            "elements": [
+                "${compileOutput}",
+                "${dependencies}",
+                "command"
+            ],
+            "command": "toolbox run -c JAVA21 mvn clean package"
+        },
+        {
+            "type": "java (build)",
+            "runOptions": {},
+            "paths": [
+                "${workspace}"
+            ],
+            "isFullBuild": true,
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "label": "java (build): Build Workspace"
+        },
+        {
+            "type": "java (buildArtifact)",
+            "runOptions": {},
+            "label": "java (buildArtifact): Ledger",
+            "mainClass": "LedgerGUI",
+            "targetPath": "${workspaceFolder}/${workspaceFolderBasename}.jar",
+            "elements": [
+                "${compileOutput}",
+                "${dependencies}"
+            ]
+        }
+    ]
+}

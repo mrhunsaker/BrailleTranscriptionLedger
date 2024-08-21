@@ -4,7 +4,7 @@
   <groupId>com.example</groupId>
   <artifactId>ledger-gui</artifactId>
   <name>Braille Transcriotion Ledger</name>
-  <version>2024.0.0-beta</version>
+  <version>2024.0.0</version>
   <description>Braille Transcription Ledger</description>
   <developers>
     <developer>
@@ -29,7 +29,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>3.5.0</version>
+        <version>3.6.0</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -91,8 +91,7 @@
     <downloadUrl>https://github.com/mrhunsaker/BrailleTranscriptionLedger</downloadUrl>
   </distributionManagement>
   <properties>
-    <maven.compiler.target>21</maven.compiler.target>
-    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>
