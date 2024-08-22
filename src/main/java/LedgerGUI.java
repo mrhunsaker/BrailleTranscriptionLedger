@@ -330,7 +330,7 @@ public class LedgerGUI extends JFrame {
         dateField.setText(LocalDate.now().toString());
         addLabelAndField(
             inputPanel,
-            "<html>Student: <br><i>(First Two Letters of First and Last Name)</i></html>",
+            "<html>Student <br> <i>Select Initials from dropdown list</i></html>",
             studentField = new JComboBox<>(studentOptions)
         );
         subjectField = new JComboBox<>(
@@ -350,7 +350,7 @@ public class LedgerGUI extends JFrame {
         );
         addLabelAndField(
             inputPanel,
-            "<html>Academic Subject</html>",
+            "<html>Academic Subject< <br> <i>Seelct Subject from Dropdown List</i></html>",
             subjectField
         );
         String[] schoolOptions = {
@@ -1375,52 +1375,52 @@ public class LedgerGUI extends JFrame {
      * @param selectedProjects  the list of selected projects to include
      * @return the fetched ledger data
      */
-        private List<String[]> fetchDataFromDatabase(
-            String startDate,
-            String endDate,
-            List<String> selectedProjects
+    private List<String[]> fetchDataFromDatabase(
+        String startDate,
+        String endDate,
+        List<String> selectedProjects
+    ) {
+        List<String[]> data = new ArrayList<>();
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? " +
+                "AND project IN (" +
+                String.join(
+                    ",",
+                    Collections.nCopies(selectedProjects.size(), "?")
+                ) +
+                ") " +
+                "ORDER BY date"
+            )
         ) {
-            List<String[]> data = new ArrayList<>();
-            try (
-                Connection conn = DriverManager.getConnection(DB_URL);
-                PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT date, student, subject, school, project, time FROM ledger WHERE date BETWEEN ? AND ? " +
-                    "AND project IN (" +
-                    String.join(
-                        ",",
-                        Collections.nCopies(selectedProjects.size(), "?")
-                    ) +
-                    ") " +
-                    "ORDER BY date"
-                )
-            ) {
-                pstmt.setString(1, startDate);
-                pstmt.setString(2, endDate);
+            pstmt.setString(1, startDate);
+            pstmt.setString(2, endDate);
 
-                // Set project parameters
-                for (int i = 0; i < selectedProjects.size(); i++) {
-                    pstmt.setString(i + 3, selectedProjects.get(i));
-                }
-
-                ResultSet rs = pstmt.executeQuery();
-
-                while (rs.next()) {
-                    String[] row = {
-                        rs.getString("date"),
-                        rs.getString("student"),
-                        rs.getString("subject"),
-                        rs.getString("school"),
-                        rs.getString("project"),
-                        rs.getString("time"),
-                    };
-                    data.add(row);
-                }
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Error fetching data: " + e.getMessage()
-                );
+            // Set project parameters
+            for (int i = 0; i < selectedProjects.size(); i++) {
+                pstmt.setString(i + 3, selectedProjects.get(i));
             }
-            return data;
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                String[] row = {
+                    rs.getString("date"),
+                    rs.getString("student"),
+                    rs.getString("subject"),
+                    rs.getString("school"),
+                    rs.getString("project"),
+                    rs.getString("time"),
+                };
+                data.add(row);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Error fetching data: " + e.getMessage()
+            );
         }
+        return data;
+    }
 }
