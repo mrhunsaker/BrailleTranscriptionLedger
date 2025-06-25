@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
   <artifactId>ledger-gui</artifactId>
-  <name>Braille Transcriotion Ledger</name>
+  <name>Braille Transcription Ledger</name>
   <version>2024.0.0</version>
   <description>Braille Transcription Ledger</description>
   <developers>
@@ -28,7 +28,15 @@
   <build>
     <plugins>
       <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>21</release>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.6.3</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -54,11 +62,6 @@
                   <artifact>*:*</artifact>
                   <excludes>
                     <exclude>module-info.class</exclude>
-                  </excludes>
-                </filter>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
                     <exclude>META-INF/MANIFEST.MF</exclude>
                     <exclude>META-INF/LICENSE</exclude>
                     <exclude>META-INF/LICENSE.txt</exclude>
@@ -68,9 +71,6 @@
                 </filter>
               </filters>
               <transformers>
-                <transformer>
-                  <mainClass>LedgerGUI</mainClass>
-                </transformer>
                 <transformer>
                   <manifestEntries>
                     <Main-Class>LedgerGUI</Main-Class>

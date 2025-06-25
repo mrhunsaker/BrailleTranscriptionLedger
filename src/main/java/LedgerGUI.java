@@ -108,28 +108,56 @@ public class LedgerGUI extends JFrame {
     /**
      * A text field for entering the date.
      */
-    private final JTextField dateField;
-    private final JList<String> teacherField;
-    private final JList<String> tviField;
-    private final JComboBox<String> mediaTypeField;
-    private final JTextField minutesSpentField;
-    private final JComboBox<String> proofStatusField;
-    private final JComboBox<String> deliveryModeField = new JComboBox<>();
+    private final JTextField dateField = new JTextField();
+    private final JTextField updatedField = new JTextField(
+        LocalDate.now().toString()
+    );
+    /**
+     * A list for selecting teachers associated with the project.
+     */
+    private JList<String> teacherField;
+    /**
+     * A list for selecting TVIs (Teachers of the Visually Impaired) associated with the project.
+     */
+    private JList<String> tviField;
+    /**
+     * A combo box for selecting the media type (e.g., braille, graphics, DAISY).
+     */
+    private JComboBox<String> mediaTypeField;
+    /**
+     * A combo box for selecting the proof status (e.g., no, in progress, revising, done).
+     */
+    private JComboBox<String> proofStatusField = new JComboBox<>(
+        loadOptionsFromFile("proof_status.json", "proof_status")
+    );
+    // Logging for proofStatusField moved to constructor
+    /**
+     * A combo box for selecting the delivery mode (e.g., delivery, pick up, email).
+     */
+    private JComboBox<String> deliveryModeField = new JComboBox<>(
+        loadOptionsFromFile("delivery_mode.json", "delivery_mode")
+    );
+    // Logging for deliveryModeField moved to constructor
+    /**
+     * A combo box for selecting the project name.
+     */
     private final JComboBox<String> projectNameField;
+    /**
+     * A combo box for selecting the project element.
+     */
     private final JComboBox<String> projectElementField;
+    /**
+     * A text field for entering the project time.
+     */
     private final JTextField projectTimeField;
     /**
      * A text field for entering the time.
      */
     private final JTextField timeField;
     /**
-     * A text area for entering notes.
+     * A combo box for seleccombo box for selectinging th the project.
      */
-    private final JTextArea notesField;
-    /**
-     * A combo box for selecting the project.
-     */
-    private final JComboBox<String> projectField;
+    private JComboBox<String> projectField;
     /**
      * A combo box for selecting the school.
      */
@@ -161,9 +189,15 @@ public class LedgerGUI extends JFrame {
     /**
      * The table model for the data table.
      */
+    /**
+     * The model for the data table, used to manage ledger entries.
+     */
     private final DefaultTableModel tableModel;
     /**
      * The URL of the SQLite database used by the application.
+     */
+    /**
+     * The URL for connecting to the SQLite database.
      */
     private static final String DB_URL = "jdbc:sqlite:ledger.db";
 
@@ -198,8 +232,8 @@ public class LedgerGUI extends JFrame {
                 LedgerGUI.this,
                 """
                 Accessible Document Generation Ledger
-                Version 2024.0.0-beta
-                \u00a9 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.
+                Version 2025.0.0
+                \u00a9 2025 Michael Ryan Hunsaker, M.Ed., Ph.D.
                 All rights reserved.""",
                 "About",
                 JOptionPane.INFORMATION_MESSAGE
@@ -222,14 +256,25 @@ public class LedgerGUI extends JFrame {
         setJMenuBar(menuBar); // Use setJMenuBar() to add the menu bar to the JFrame
         // Input Panel
 
-        JPanel inputPanel = new JPanel(new GridLayout(0, 2, 10, 10));
-        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel ProjectSetup = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectSetup.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectTracking.setBorder(
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        );
 
         addLabelAndField(
-            inputPanel,
+            ProjectTracking,
             "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
-            dateField = new JTextField()
-            //dateField.setText(formattedDate)
+            dateField
+        );
+        dateField.setText(LocalDate.now().toString());
+
+        addLabelAndField(
+            ProjectSetup,
+            "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
+            dateField
         );
         String[] studentOptions = loadOptionsFromFile(
             "students.json",
@@ -243,7 +288,7 @@ public class LedgerGUI extends JFrame {
         String[] mediaTypeOptions = { "Braille", "Large Print", "Audio" };
         dateField.setText(LocalDate.now().toString());
         addLabelAndField(
-            inputPanel,
+            ProjectSetup,
             "<html>Student <br> <i>Select Initials from dropdown list</i></html>",
             studentField = new JComboBox<>(studentOptions)
         );
@@ -253,7 +298,7 @@ public class LedgerGUI extends JFrame {
         );
         subjectField = new JComboBox<>(subjectOptions);
         addLabelAndField(
-            inputPanel,
+            ProjectSetup,
             "<html>Academic Subject<br><i>Select Subject from Dropdown List</i></html>",
             subjectField
         );
@@ -262,61 +307,95 @@ public class LedgerGUI extends JFrame {
             loadOptionsFromFile("schools.json", "schools")
         );
 
-        addLabelAndField(inputPanel, "School", schoolField);
-        addLabelAndField(inputPanel, "Teachers", teacherField = new JList<>());
-        addLabelAndField(inputPanel, "TVIs", tviField = new JList<>());
-        addLabelAndField(
-            inputPanel,
-            "Media Type",
-            mediaTypeField = new JComboBox<>()
+        addLabelAndField(ProjectSetup, "School", schoolField);
+
+        ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectTracking.setBorder(
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
         );
-        addLabelAndField(
-            inputPanel,
-            "Minutes Spent",
-            minutesSpentField = new JTextField()
-        );
-        addLabelAndField(
-            inputPanel,
-            "Proof Status",
-            proofStatusField = new JComboBox<>()
-        );
-        addLabelAndField(inputPanel, "Delivery Mode", deliveryModeField);
-        addLabelAndField(inputPanel, "Teachers", teacherField);
+        System.out.println("Initializing Proof Status field...");
+        if (proofStatusField.getItemCount() == 0) {
+            System.err.println(
+                "Error: Proof Status field is empty after loading from proof_status.json."
+            );
+        } else {
+            System.out.println(
+                "Proof Status field loaded successfully with " +
+                proofStatusField.getItemCount() +
+                " items."
+            );
+        }
+        addLabelAndField(ProjectTracking, "Proof Status", proofStatusField);
+        //addLabelAndField(inputPanel, "Delivery Mode", deliveryModeField);
+
+        System.out.println("Initializing Teachers field...");
+        teacherField = new JList<>(new String[] { "Teacher 1", "Teacher 2" });
+        if (teacherField == null) {
+            System.err.println("Error: Teachers field is null.");
+        }
+        addLabelAndField(ProjectSetup, "Teachers", teacherField);
         teacherField.setSelectionMode(
             ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         );
-        addLabelAndField(inputPanel, "TVIs", tviField);
-        tviField.setSelectionMode(
-            ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-        );
-        tviField.setSelectionMode(
-            ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-        );
-        addLabelAndField(inputPanel, "Media Type", mediaTypeField);
-        projectField = new JComboBox<>(getProjects());
-        addLabelAndField(inputPanel, "Project Type", projectField);
-        addLabelAndField(
-            inputPanel,
-            "<html>Time: <br>(Rounded UP to Nearest .25 hr fter 5 min)</html>",
-            timeField = new JTextField()
-        );
-        notesField = new JTextArea();
-        notesField.setLineWrap(true);
-        notesField.setWrapStyleWord(true);
-        JScrollPane notesScrollPane = new JScrollPane(notesField);
-        addLabelAndField(
-            inputPanel,
-            "<html>Process Notes:</html>",
-            notesScrollPane
-        );
 
-        addLabelAndField(inputPanel, "Proof Status", proofStatusField);
-        addLabelAndField(inputPanel, "Delivery Mode", deliveryModeField);
+        System.out.println("Initializing TVIs field...");
+        tviField = new JList<>(new String[] { "TVI 1", "TVI 2" });
+        if (tviField == null) {
+            System.err.println("Error: TVIs field is null.");
+        }
+        addLabelAndField(ProjectSetup, "TVIs", tviField);
+        tviField.setSelectionMode(
+            ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+        );
+        tviField.setSelectionMode(
+            ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+        );
+        System.out.println("Initializing Media Type field...");
+        if (mediaTypeField == null) {
+            System.err.println("Error: Media Type field is null.");
+        }
+        mediaTypeField = new JComboBox<>(
+            loadOptionsFromFile("media_type.json", "media_types")
+        );
+        // Logging for mediaTypeField moved to constructor
+        addLabelAndField(ProjectSetup, "Media Type", mediaTypeField);
+        System.out.println("Initializing Project Type field...");
+        projectField = new JComboBox<>(getProjects());
+        if (projectField == null) {
+            System.err.println("Error: Project Type field is null.");
+        }
+        addLabelAndField(ProjectSetup, "Project Type", projectField);
+        System.out.println("Initializing Time field...");
+        timeField = new JTextField();
+        if (timeField == null) {
+            System.err.println("Error: Time field is null.");
+        }
+        addLabelAndField(
+            ProjectTracking,
+            "<html>Time: <br>(Rounded UP to Nearest .25 hr fter 5 min)</html>",
+            timeField
+        );
+        System.out.println("Initializing Updated field...");
+        System.out.println("Updated field...");
+        System.out.println("Initializing Updated field...");
+        if (updatedField == null) {
+            System.err.println("Error: Updated field is null.");
+        }
+        addLabelAndField(
+            ProjectTracking,
+            "<html>Updated: <br>(YYYY-MM-DD)</html>",
+            updatedField
+        );
+        ProjectTracking.add(new JLabel("Updated Field")); // Add updatedField to ProjectTracking
+        ProjectTracking.add(updatedField);
+        addLabelAndField(ProjectTracking, "Proof Status", proofStatusField);
+        addLabelAndField(ProjectSetup, "Delivery Mode", deliveryModeField);
         JLabel completeLabel = new JLabel("Complete:");
         completeCheckBox = new JCheckBox();
+        completeCheckBox.setEnabled(true); // Activate the checkbox
         completeLabel.setLabelFor(completeCheckBox);
-        inputPanel.add(completeLabel);
-        inputPanel.add(completeCheckBox);
+        ProjectTracking.add(completeLabel);
+        ProjectTracking.add(completeCheckBox);
         completeCheckBox.setMnemonic(KeyEvent.VK_C);
         completeCheckBox
             .getAccessibleContext()
@@ -332,6 +411,13 @@ public class LedgerGUI extends JFrame {
         generatePdfButton = new JButton("Generate PDF Report");
         generatePdfButton.setMnemonic(KeyEvent.VK_G);
         generatePdfButton.addActionListener(e -> showDateRangeDialog());
+        JPanel projectTrackingPanel = new JPanel(new BorderLayout());
+        projectTrackingPanel.add(generatePdfButton, BorderLayout.SOUTH);
+        generatePdfButton
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Generate a PDF report for the project tracking data"
+            );
         generatePdfButton
             .getAccessibleContext()
             .setAccessibleDescription(
@@ -343,10 +429,10 @@ public class LedgerGUI extends JFrame {
         );
         buttonPanel.add(submitButton);
         buttonPanel.add(generatePdfButton);
-        inputPanel.add(buttonPanel);
+        ProjectSetup.add(buttonPanel);
 
         JPanel projectSetupPanel = new JPanel(new BorderLayout());
-        projectSetupPanel.add(inputPanel, BorderLayout.NORTH);
+        projectSetupPanel.add(ProjectSetup, BorderLayout.NORTH);
 
         // Table
         tableModel = new DefaultTableModel(
@@ -366,9 +452,9 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription("Table showing ledger entries");
         dataTable.setEnabled(false);
         JScrollPane scrollPane = new JScrollPane(dataTable);
-        projectSetupPanel.add(scrollPane, BorderLayout.CENTER);
+        projectSetupPanel.add(scrollPane, BorderLayout.SOUTH);
 
-        JPanel filePickerPanel = new JPanel(new GridLayout(0, 1, 10, 10));
+        JPanel filePickerPanel = new JPanel(new GridLayout(0, 2, 10, 50));
         String[] fileTypes = {
             "originals",
             "graphics",
@@ -398,17 +484,16 @@ public class LedgerGUI extends JFrame {
             });
             filePickerPanel.add(filePickerButton);
         }
-        projectSetupPanel.add(filePickerPanel, BorderLayout.SOUTH);
         tabbedPane.addTab("Project Setup", projectSetupPanel);
         add(tabbedPane, BorderLayout.CENTER);
 
         initializeDatabase();
+        loadStartupOptions();
         loadDataFromFiles();
         loadDataFromDatabase();
 
-        JPanel projectTrackingPanel = new JPanel(new BorderLayout());
-        JPanel trackingInputPanel = new JPanel(new GridLayout(0, 2, 10, 10));
-        trackingInputPanel.setBorder(
+        ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectTracking.setBorder(
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         );
 
@@ -430,17 +515,17 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription("Table showing tracking entries");
         trackingDataTable.setEnabled(false);
         JScrollPane trackingScrollPane = new JScrollPane(trackingDataTable);
-        projectTrackingPanel.add(trackingInputPanel, BorderLayout.NORTH);
-        projectTrackingPanel.add(trackingScrollPane, BorderLayout.CENTER);
+        projectTrackingPanel.add(ProjectTracking, BorderLayout.NORTH);
+        projectTrackingPanel.add(ProjectTracking, BorderLayout.NORTH);
 
         tabbedPane.addTab("Project Tracking", projectTrackingPanel);
         addLabelAndField(
-            trackingInputPanel,
+            ProjectTracking,
             "Project Name",
             projectNameField = new JComboBox<>(getProjectNames())
         );
         addLabelAndField(
-            trackingInputPanel,
+            ProjectTracking,
             "Element of Project",
             projectElementField = new JComboBox<>(
                 new String[] {
@@ -453,16 +538,16 @@ public class LedgerGUI extends JFrame {
             )
         );
         addLabelAndField(
-            trackingInputPanel,
+            ProjectTracking,
             "Time (HH:MM)",
             projectTimeField = new JTextField()
         );
 
         JButton addTrackingButton = new JButton("Add Tracking Info");
         addTrackingButton.addActionListener(e -> addTrackingInfo());
-        trackingInputPanel.add(addTrackingButton);
+        ProjectTracking.add(addTrackingButton);
 
-        projectTrackingPanel.add(trackingInputPanel, BorderLayout.NORTH);
+        projectTrackingPanel.add(ProjectTracking, BorderLayout.NORTH);
         tabbedPane.addTab("Project Tracking", projectTrackingPanel);
 
         // Set up focus traversal
@@ -483,12 +568,19 @@ public class LedgerGUI extends JFrame {
         JComponent field
     ) {
         JLabel label = new JLabel(labelText);
+        if (field == null) {
+            throw new IllegalArgumentException(
+                "Field component cannot be null"
+            );
+        }
         label.setLabelFor(field);
-        panel.add(label);
-        panel.add(field);
-        field
-            .getAccessibleContext()
-            .setAccessibleDescription("Enter " + labelText.toLowerCase());
+        panel.add(label, BorderLayout.WEST);
+        panel.add(field, BorderLayout.EAST);
+        if (field.getAccessibleContext() != null) {
+            field
+                .getAccessibleContext()
+                .setAccessibleDescription("Enter " + labelText.toLowerCase());
+        }
     }
 
     /**
@@ -497,32 +589,81 @@ public class LedgerGUI extends JFrame {
      * @param input the input string to clean
      * @return the cleaned input string
      */
-    private String[] loadOptionsFromFile(String filename, String key) {
+    /**
+     * Loads options from a JSON file based on the specified key.
+     *
+     * @param fileName The name of the JSON file.
+     * @param key The key to extract options from the file.
+     * @return An array of options loaded from the file.
+     */
+    private String[] loadOptionsFromFile(String fileName, String key) {
         List<String> options = new ArrayList<>();
         try (
-            BufferedReader reader = new BufferedReader(new FileReader(filename))
+            BufferedReader reader = new BufferedReader(new FileReader(fileName))
         ) {
+            System.out.println(
+                "Attempting to load options from file: " + fileName
+            );
             StringBuilder jsonContent = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 jsonContent.append(line);
             }
+            System.out.println(
+                "File content loaded: " + jsonContent.toString()
+            );
             JSONObject jsonObject = new JSONObject(jsonContent.toString());
             JSONArray jsonArray = jsonObject.getJSONArray(key);
+            System.out.println("Extracting options using key: " + key);
             for (int i = 0; i < jsonArray.length(); i++) {
                 options.add(jsonArray.getString(i));
             }
+            System.out.println("Options loaded successfully: " + options);
         } catch (IOException | JSONException e) {
             JOptionPane.showMessageDialog(
                 this,
-                "Error loading options from file: " + filename
+                "Error loading options from file: " + fileName
+            );
+            System.err.println(
+                "Exception occurred while loading options: " + e.getMessage()
             );
         }
         return options.toArray(new String[0]);
     }
 
+    private void loadStartupOptions() {
+        File jsonDirectory = new File("BrailleTranscriptionLedger");
+        File[] jsonFiles = jsonDirectory.listFiles((dir, name) ->
+            name.endsWith(".json")
+        );
+
+        if (jsonFiles != null) {
+            for (File jsonFile : jsonFiles) {
+                String fileName = jsonFile.getName();
+                String key = fileName.replace(".json", "");
+                String[] options = loadOptionsFromFile(jsonFile.getPath(), key);
+
+                switch (key) {
+                    case "media_type":
+                        mediaTypeField = new JComboBox<>(options);
+                        break;
+                    case "delivery_mode":
+                        deliveryModeField = new JComboBox<>(options);
+                        break;
+                    case "project_type":
+                        projectField = new JComboBox<>(options);
+                        break;
+                    // Add more cases as needed for other JSON files
+                }
+            }
+        }
+    }
+
     /**
      * Shows a dialog for entering the date range and selecting the projects to generate a PDF report.
+     */
+    /**
+     * Displays a dialog for selecting a date range to generate a report.
      */
     private void showDateRangeDialog() {
         JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
@@ -630,9 +771,14 @@ public class LedgerGUI extends JFrame {
      *
      * @param args the command-line arguments (unused)
      */
+    /**
+     * The main entry point for the application.
+     *
+     * @param args Command-line arguments passed to the application.
+     */
     public static void main(String[] args) {
         // Set the look and feel to the system look and feel
-        String defaultTheme = "Cobalt 2"; // or any other theme name from the map
+        String defaultTheme = "Cyan Light"; // or any other theme name from the map
         try {
             UIManager.setLookAndFeel(
                 INTELLIJ_THEMES.get(defaultTheme)
@@ -664,6 +810,11 @@ public class LedgerGUI extends JFrame {
      * Sets the specified IntelliJ IDEA-inspired theme for the application.
      *
      * @param themeName the name of the theme to set
+     */
+    /**
+     * Sets the IntelliJ IDEA-inspired theme for the application.
+     *
+     * @param themeName The name of the theme to apply.
      */
     private void setIntelliJTheme(String themeName) {
         try {
@@ -698,6 +849,9 @@ public class LedgerGUI extends JFrame {
     /**
      * Initializes the SQLite database used by the application.
      */
+    /**
+     * Initializes the database connection and ensures the database is ready for use.
+     */
     private void initializeDatabase() {
         loadDataFromFiles();
         try (
@@ -713,6 +867,11 @@ public class LedgerGUI extends JFrame {
         }
     }
 
+    /**
+     * Retrieves the list of project names from the database.
+     *
+     * @return An array of project names.
+     */
     private String[] getProjects() {
         return new String[] {
             "UEB Literary Transcription",
@@ -726,6 +885,9 @@ public class LedgerGUI extends JFrame {
 
     /**
      * Loads data from JSON files into GUI components.
+     */
+    /**
+     * Loads data from external files into the application.
      */
     private void loadDataFromFiles() {
         try {
@@ -765,18 +927,93 @@ public class LedgerGUI extends JFrame {
     }
 
     private int getProjectId(String projectName) {
-        // Stub implementation
-        return 1;
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT project_name_id FROM Project_Name WHERE name = ?"
+            )
+        ) {
+            pstmt.setString(1, projectName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("project_name_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching project ID: " + e.getMessage());
+        }
+        return -1; // Return -1 if not found
     }
 
     private int getStudentId(String studentName) {
-        // Stub implementation
-        return 1;
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT student_id FROM Students WHERE name = ?"
+            )
+        ) {
+            pstmt.setString(1, studentName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("student_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching student ID: " + e.getMessage());
+        }
+        return -1; // Return -1 if not found
     }
 
     private int getTeacherId(String teacherName) {
-        // Stub implementation
-        return 1;
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT teacher_id FROM Teachers WHERE name = ?"
+            )
+        ) {
+            pstmt.setString(1, teacherName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("teacher_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching teacher ID: " + e.getMessage());
+        }
+        return -1; // Return -1 if not found
+    }
+
+    private int getSchoolId(String schoolName) {
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT school_id FROM Schools WHERE name = ?"
+            )
+        ) {
+            pstmt.setString(1, schoolName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("school_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching school ID: " + e.getMessage());
+        }
+        return -1; // Return -1 if not found
+    }
+
+    private int getSubjectId(String subjectName) {
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT subject_id FROM Subjects WHERE name = ?"
+            )
+        ) {
+            pstmt.setString(1, subjectName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("subject_id");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching subject ID: " + e.getMessage());
+        }
+        return -1; // Return -1 if not found
     }
 
     private int getTviId(String tviName) {
@@ -977,6 +1214,11 @@ public class LedgerGUI extends JFrame {
     /**
      * Loads the existing ledger data from the database and populates the data table.
      */
+    /**
+     * Loads data from the database into the application.
+     */
+    private JPanel ProjectTracking;
+
     private void loadDataFromDatabase() {
         tableModel.setRowCount(0);
         try (
@@ -1019,6 +1261,9 @@ public class LedgerGUI extends JFrame {
      * Handles the submission of new ledger data.
      * Saves the data to the database and updates the data table.
      */
+    /**
+     * Adds tracking information to the database.
+     */
     private void addTrackingInfo() {
         String projectName = projectNameField.getSelectedItem().toString();
         String projectElement = projectElementField
@@ -1049,6 +1294,12 @@ public class LedgerGUI extends JFrame {
     }
 
     // Method to submit file paths to the database
+    /**
+     * Submits a file path to the database for tracking purposes.
+     *
+     * @param fileType The type of file being submitted (e.g., originals, graphics).
+     * @param filePath The path of the file to be submitted.
+     */
     private void submitFileToDatabase(String fileType, String filePath) {
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
@@ -1079,53 +1330,75 @@ public class LedgerGUI extends JFrame {
         }
     }
 
+    /**
+     * Submits data entered in the application to the database.
+     */
     private void submitData() {
         String date = dateField.getText();
-        String school = schoolField.getSelectedItem().toString();
-        String student = studentField.getSelectedItem().toString();
+        int schoolId = getSchoolId(schoolField.getSelectedItem().toString());
+        int studentId = getStudentId(studentField.getSelectedItem().toString());
         String subject = subjectField.getSelectedItem().toString();
-        String notes = cleanInput(notesField.getText());
-        String project = projectField.getSelectedItem().toString();
+        String notes = "";
+        int projectNameId = getProjectId(
+            projectField.getSelectedItem().toString()
+        );
         String time = timeField.getText();
+        String updated = updatedField.getText();
         boolean complete = completeCheckBox.isSelected();
-        String teacher = teacherField.getSelectedValue().toString();
+        int teacherId = getTeacherId(
+            teacherField.getSelectedValue().toString()
+        );
         String tvi = tviField.getSelectedValue().toString();
         String mediaType = mediaTypeField.getSelectedItem().toString();
-        int minutesSpent = Integer.parseInt(minutesSpentField.getText());
+        int subjectId = getSubjectId(subject);
         String proofStatus = proofStatusField.getSelectedItem().toString();
         String deliveryMode = deliveryModeField.getSelectedItem().toString();
 
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
-                "INSERT INTO Project_Details (project_name_id, student_id, minutes_spent, proof_status, complete, delivered, delivery_mode, subject, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO Project_Details (project_name_id, student_id, proof_status, complete, delivered, delivery_mode, subject, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             )
         ) {
-            pstmt.setInt(1, getProjectId(project));
-            pstmt.setInt(2, getStudentId(student));
-            pstmt.setInt(3, minutesSpent);
-            pstmt.setString(4, proofStatus);
-            pstmt.setBoolean(5, complete);
-            pstmt.setBoolean(6, false); // Default delivered status
-            pstmt.setString(7, deliveryMode);
-            pstmt.setString(8, subject);
+            pstmt.setInt(
+                1,
+                getProjectId(projectField.getSelectedItem().toString())
+            );
+            pstmt.setInt(
+                2,
+                getStudentId(studentField.getSelectedItem().toString())
+            );
+            pstmt.setString(3, proofStatus);
+            pstmt.setBoolean(4, complete);
+            pstmt.setBoolean(5, false); // Default delivered status
+            pstmt.setString(6, deliveryMode);
+            pstmt.setString(7, subject);
             String sqlNotes = notes.replace("\n", "\\n");
-            pstmt.setString(9, sqlNotes);
+            pstmt.setString(8, sqlNotes);
             pstmt.executeUpdate();
 
             // Insert into Student_Teachers
             PreparedStatement teacherStmt = conn.prepareStatement(
                 "INSERT INTO Student_Teachers (student_id, teacher_id) VALUES (?, ?)"
             );
-            teacherStmt.setInt(1, getStudentId(student));
-            teacherStmt.setInt(2, getTeacherId(teacher));
+            teacherStmt.setInt(
+                1,
+                getStudentId(studentField.getSelectedItem().toString())
+            );
+            teacherStmt.setInt(
+                2,
+                getTeacherId(teacherField.getSelectedValue().toString())
+            );
             teacherStmt.executeUpdate();
 
             // Insert into Student_TVIs
             PreparedStatement tviStmt = conn.prepareStatement(
                 "INSERT INTO Student_TVIs (student_id, tvi_id) VALUES (?, ?)"
             );
-            tviStmt.setInt(1, getStudentId(student));
+            tviStmt.setInt(
+                1,
+                getStudentId(studentField.getSelectedItem().toString())
+            );
             tviStmt.setInt(2, getTviId(tvi));
             tviStmt.executeUpdate();
 
@@ -1134,7 +1407,10 @@ public class LedgerGUI extends JFrame {
                 "INSERT INTO Media_Types (type, project_name_id) VALUES (?, ?)"
             );
             mediaStmt.setString(1, mediaType);
-            mediaStmt.setInt(2, getProjectId(project));
+            mediaStmt.setInt(
+                2,
+                getProjectId(projectField.getSelectedItem().toString())
+            );
             mediaStmt.executeUpdate();
         } catch (SQLException | NumberFormatException e) {
             JOptionPane.showMessageDialog(
@@ -1152,14 +1428,16 @@ public class LedgerGUI extends JFrame {
     /**
      * Clears the input fields in the application.
      */
+    /**
+     * Clears all input fields in the application.
+     */
     private void clearInputFields() {
         LocalDate currentDate = LocalDate.now();
         // Format the date
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         String formattedDate = currentDate.format(formatter);
         dateField.setText(formattedDate);
-        notesField.setText("");
-        timeField.setText("");
+
         completeCheckBox.setSelected(false);
     }
 
@@ -1499,7 +1777,7 @@ public class LedgerGUI extends JFrame {
                 // add copyright
                 footer.addCell(
                     new Phrase(
-                        "© 2024 Michael Ryan Hunsaker, M.Ed., Ph.D.. All Rights Reserved.",
+                        "© 2025 Michael Ryan Hunsaker, M.Ed., Ph.D. All Rights Reserved.",
                         new com.itextpdf.text.Font(
                             com.itextpdf.text.Font.FontFamily.HELVETICA,
                             8

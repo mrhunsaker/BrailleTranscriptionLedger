@@ -1,0 +1,13 @@
+{
+  "project_types": [
+    "UEB Literary Transcription",
+    "UEB Math/Science Transcription",
+    "Braille Music Transcription",
+    "Graphics Creation",
+    "DAISY Book Creation",
+    "Large Print Document Creation",
+    "Accessible Document Creation",
+    "Monarch PDF Creation",
+    "3D Print Creation"
+  ]
+}

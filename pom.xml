@@ -23,57 +23,85 @@
             <groupId>com.itextpdf</groupId>
             <artifactId>itextpdf</artifactId>
             <version>5.5.13.4</version>
-    </dependency>
-    <dependency>
-        <groupId>com.formdev</groupId>
-        <artifactId>flatlaf</artifactId>
-        <version>3.5.1</version>
-    </dependency>
-    <dependency>
-      <groupId>com.formdev</groupId>
-      <artifactId>flatlaf-intellij-themes</artifactId>
-      <version>3.5.1</version>
-    </dependency>
+        </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-intellij-themes</artifactId>
+            <version>3.5.1</version>
+        </dependency>
         <!-- SLF4J API -->
-    <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>2.0.16</version> <!-- or the latest version -->
-    </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.16</version>
+        </dependency>
 
-    <!-- Logback Classic (SLF4J Binding) -->
-    <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-classic</artifactId>
-        <version>1.5.7</version> <!-- or the latest version -->
-    </dependency>
+        <!-- Logback Classic (SLF4J Binding) -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.7</version>
+        </dependency>
 
-    <!-- Optional: Logback Core -->
-    <dependency>
-        <groupId>ch.qos.logback</groupId>
-        <artifactId>logback-core</artifactId>
-        <version>1.5.7</version> <!-- or the latest version -->
-    </dependency>
+        <!-- Optional: Logback Core -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.7</version>
+        </dependency>
+        <!-- JSON Library -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20230227</version>
         </dependency>
+        <!-- Additional Dependencies -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.19.0</version>
+        </dependency>
     </dependencies>
+
     <build>
         <plugins>
-        <plugin>
-          <inherited>true</inherited>
-          <artifactId>maven-javadoc-plugin</artifactId>
-          <executions>
-            <execution>
-              <id>attach-javadocs</id>
-              <goals>
-                <goal>jar</goal>
-              </goals>
-            </execution>
-          </executions>
-        </plugin>
+            <!-- Maven Compiler Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+
+            <!-- Maven Javadoc Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <inherited>true</inherited>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Shade Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -85,16 +113,11 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                       <filters>
-                       <filter>
-                           <artifact>*:*</artifact>
-                           <excludes>
-                               <exclude>module-info.class</exclude>
-                           </excludes>
-                       </filter>
-                            <filter>
-                                <artifact>*:*</artifact>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>module-info.class</exclude>
                                         <exclude>META-INF/MANIFEST.MF</exclude>
                                         <exclude>META-INF/LICENSE</exclude>
                                         <exclude>META-INF/LICENSE.txt</exclude>
@@ -105,12 +128,9 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>LedgerGUI</mainClass>
-                                </transformer>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
-                                      <Main-Class>LedgerGUI</Main-Class>
-                                      <Built-By>mrhunsaker</Built-By>
+                                        <Main-Class>LedgerGUI</Main-Class>
+                                        <Built-By>mrhunsaker</Built-By>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>
@@ -120,45 +140,47 @@
             </plugin>
         </plugins>
     </build>
-        <reporting>
-            <plugins>
-                <plugin>
+
+    <reporting>
+        <plugins>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.4.0</version>
                 <reportSets>
                     <reportSet>
-                    <reports>
-                        <report>checkstyle</report>
-                    </reports>
+                        <reports>
+                            <report>checkstyle</report>
+                        </reports>
                     </reportSet>
                 </reportSets>
-                </plugin>
-            </plugins>
-        </reporting>
-    <name>Braille Transcriotion Ledger</name>
+            </plugin>
+        </plugins>
+    </reporting>
+
+    <name>Braille Transcription Ledger</name>
     <description>Braille Transcription Ledger</description>
     <licenses>
-      <license>
-        <name>Apache-2.0</name>
-        <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>manual</distribution>
-        <comments>A business-friendly OSS license</comments>
-      </license>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>manual</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
     </licenses>
     <organization>
-      <name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
-	  <url>https://github.com/mrhunsaker/</url>
-	</organization>
-	<developers>
-	  <developer>
-		<id>mrhunsaker</id>
-		<name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
-		<email>hunsakerconsulting@gmail.com</email>
-	  </developer>
-	</developers>
-	<distributionManagement>
-		<downloadUrl>https://github.com/mrhunsaker/BrailleTranscriptionLedger</downloadUrl>
-	</distributionManagement>
+        <name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
+        <url>https://github.com/mrhunsaker/</url>
+    </organization>
+    <developers>
+        <developer>
+            <id>mrhunsaker</id>
+            <name>Michael Ryan Hunsaker, M.Ed., Ph.D.</name>
+            <email>hunsakerconsulting@gmail.com</email>
+        </developer>
+    </developers>
+    <distributionManagement>
+        <downloadUrl>https://github.com/mrhunsaker/BrailleTranscriptionLedger</downloadUrl>
+    </distributionManagement>
 
 </project>
