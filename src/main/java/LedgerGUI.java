@@ -19,6 +19,7 @@ import com.formdev.flatlaf.intellijthemes.*;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import java.awt.*;
+import java.awt.Font;
 import java.awt.event.*;
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,18 +33,17 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import javax.accessibility.AccessibleContext;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.table.DefaultTableModel;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The `LedgerGUI` class is a Swing-based application that provides a graphical user interface for managing a ledger.
@@ -67,8 +67,44 @@ import org.json.JSONObject;
  * @author Michael Ryan Hunsaker, M.Ed., Ph.D.
  * @version 2024.0.0
  */
-
 public class LedgerGUI extends JFrame {
+
+    // Localization
+    /**
+     * Resource bundle for label localization.
+     */
+    private ResourceBundle labels = ResourceBundle.getBundle(
+        "messages",
+        Locale.ENGLISH
+    );
+
+    /**
+     * Current UI locale.
+     */
+    private Locale currentLocale = Locale.ENGLISH;
+
+    /**
+     * References for dynamic label updates.
+     */
+    private JLabel studentLabel, schoolLabel, projectLabel, timeLabel, teacherLabel, tviLabel, subjectLabel, notesLabel;
+
+    /**
+     * Main tabbed pane for UI.
+     */
+    private JTabbedPane mainTabs;
+    // Add other label/button/tab references as needed
+
+    // Localization (already declared above, remove duplicates)
+    // Store references to all label components for dynamic update (already declared above, remove duplicates)
+
+    private static final Logger logger = LoggerFactory.getLogger(
+        LedgerGUI.class
+    );
+
+    /**
+     * Stores the most recently inserted detail_id from Project_Details.
+     */
+    private int currentDetailId = -1;
 
     /**
      * A static map that stores the available IntelliJ IDEA-inspired themes for the application.
@@ -111,9 +147,105 @@ public class LedgerGUI extends JFrame {
      * A text field for entering the date.
      */
     private final JTextField dateField = new JTextField();
+    /**
+     * Text field for displaying or editing the last updated value.
+     */
     private final JTextField updatedField = new JTextField(
         LocalDate.now().toString()
     );
+    /**
+     * Error labels for validation feedback
+     */
+    private final JLabel dateErrorLabel = new JLabel();
+    /**
+     * Error label for the Student field. Displays validation messages.
+     */
+    private final JLabel studentErrorLabel = new JLabel();
+    /**
+     * Error label for the School field. Displays validation messages.
+     */
+    private final JLabel schoolErrorLabel = new JLabel();
+    /**
+     * Error label for the Project field. Displays validation messages.
+     */
+    private final JLabel projectErrorLabel = new JLabel();
+    /**
+     * Error label for the Time field. Displays validation messages.
+     */
+    private final JLabel timeErrorLabel = new JLabel();
+    /**
+     * Error label for the Teacher field. Displays validation messages.
+     */
+    private final JLabel teacherErrorLabel = new JLabel();
+    /**
+     * Error label for the TVI field. Displays validation messages.
+     */
+    private final JLabel tviErrorLabel = new JLabel();
+    /**
+     * Error label for the Subject field. Displays validation messages.
+     */
+    private final JLabel subjectErrorLabel = new JLabel();
+    /**
+     * Error label for the Notes field. Displays validation messages.
+     */
+    private final JLabel notesErrorLabel = new JLabel();
+
+    /**
+     * Combo box for indicating if the project is completed (Yes/No).
+     */
+    private JComboBox<String> completedField;
+
+    // Accessibility live region for announcements
+    /**
+     * Accessibility live region for announcements to screen readers.
+     */
+    private final JLabel liveRegionLabel = new JLabel();
+
+    // Store help dialog font for accessibility
+    /**
+     * Font used for help dialogs to improve accessibility.
+     */
+    private Font helpDialogFont = new Font("SansSerif", Font.PLAIN, 32);
+
+    // Menu components promoted to fields for accessibility/localization
+    /**
+     * Main menu bar for the application.
+     */
+    private JMenuBar menuBar;
+    /**
+     * File menu for file operations.
+     */
+    private JMenu fileMenu;
+    /**
+     * Accessibility menu for accessibility options.
+     */
+    private JMenu accessibilityMenu;
+    /**
+     * Theme menu for UI theme selection.
+     */
+    private JMenu themeMenu;
+    /**
+     * Help menu for accessing help dialogs.
+     */
+    private JMenu helpMenu;
+    /**
+     * Menu item for keyboard shortcuts help.
+     */
+    private JMenuItem keyboardShortcutsMenuItem;
+    /**
+     * Menu item to skip to main content for accessibility.
+     */
+    private JMenuItem skipToMainContentItem;
+
+    // Localization
+    /**
+     * Resource bundle for localization of UI text.
+     */
+    private ResourceBundle bundle = ResourceBundle.getBundle(
+        "messages",
+        Locale.getDefault()
+    );
+
     /**
      * A list for selecting teachers associated with the project.
      */
@@ -123,6 +255,10 @@ public class LedgerGUI extends JFrame {
      */
     private JList<String> tviField;
     /**
+     * A combo box for selecting the LEA (Local Education Agency) associated with the student.
+     */
+    private JComboBox<String> leaField;
+    /**
      * A combo box for selecting the media type (e.g., braille, graphics, DAISY).
      */
     private JComboBox<String> mediaTypeField;
@@ -130,20 +266,25 @@ public class LedgerGUI extends JFrame {
      * A combo box for selecting the proof status (e.g., no, in progress, revising, done).
      */
     private JComboBox<String> proofStatusField = new JComboBox<>(
-        loadOptionsFromFile("proof_status.json", "proof_status")
+        loadOptionsFromFile("json_files/proof_status.json", "proof_status")
     );
     // Logging for proofStatusField moved to constructor
     /**
      * A combo box for selecting the delivery mode (e.g., delivery, pick up, email).
      */
     private JComboBox<String> deliveryModeField = new JComboBox<>(
-        loadOptionsFromFile("delivery_mode.json", "delivery_mode")
+        loadOptionsFromFile("json_files/delivery_mode.json", "delivery_mode")
     );
     // Logging for deliveryModeField moved to constructor
     /**
      * A combo box for selecting the project name.
      */
     private final JComboBox<String> projectNameField;
+
+    /**
+     * Text field for entering the project name in Project Setup.
+     */
+    private JTextField setupProjectNameTextField;
 
     /**
      * A panel for Project Status.
@@ -185,9 +326,9 @@ public class LedgerGUI extends JFrame {
      */
     private final JComboBox<String> subjectField;
     /**
-     * A checkbox for indicating the completion status.
+     * A combo box for indicating the completion status (Yes/No).
      */
-    private final JCheckBox completeCheckBox;
+    private JComboBox<String> completeComboBox;
     /**
      * A button for submitting the data.
      */
@@ -219,7 +360,25 @@ public class LedgerGUI extends JFrame {
      * Constructs a new `LedgerGUI` instance and initializes the application's components.
      */
     public LedgerGUI() {
+        // Set global font for all UI components to 20pt before creating any components
+        FontUIResource globalFont = new FontUIResource(
+            "SansSerif",
+            Font.PLAIN,
+            32
+        );
+        for (
+            Enumeration<Object> keys = UIManager.getDefaults().keys();
+            keys.hasMoreElements();
+
+        ) {
+            Object key = keys.nextElement();
+            if (key != null && key.toString().toLowerCase().contains("font")) {
+                UIManager.put(key, globalFont);
+            }
+        }
+
         initializeDatabaseTables();
+        ProjectSetup = new JPanel();
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         double widthPercentage = 0.67; // 67% of screen width
         int screenWidth = screenSize.width;
@@ -237,40 +396,121 @@ public class LedgerGUI extends JFrame {
         setLayout(new BorderLayout());
 
         // Create MenuBar
-        JMenuBar menuBar = new JMenuBar();
-        JMenu fileMenu = new JMenu("File");
-        JMenu themeMenu = new JMenu("Themes");
-        JMenuItem aboutMenuItem = new JMenuItem("About");
+        menuBar = new JMenuBar();
+        fileMenu = new JMenu("File");
+        accessibilityMenu = new JMenu(getString("accessibility_menu"));
+        themeMenu = new JMenu(getString("themes_menu"));
+        helpMenu = new JMenu("Help");
+
+        // Ensure table headers and tooltips use global font
+        UIManager.put(
+            "TableHeader.font",
+            new FontUIResource("SansSerif", Font.PLAIN, 32)
+        );
+        UIManager.put(
+            "ToolTip.font",
+            new FontUIResource("SansSerif", Font.PLAIN, 32)
+        );
+
+        // Keyboard Shortcuts menu item
+        keyboardShortcutsMenuItem = new JMenuItem("Keyboard Shortcuts");
+        keyboardShortcutsMenuItem.addActionListener(e ->
+            showKeyboardShortcutsDialog()
+        );
+        accessibilityMenu.add(keyboardShortcutsMenuItem);
+
+        // Skip to Main Content menu item
+        skipToMainContentItem = new JMenuItem("Skip to Main Content");
+        skipToMainContentItem.setMnemonic(KeyEvent.VK_M); // Alt+M
+        skipToMainContentItem.setAccelerator(
+            KeyStroke.getKeyStroke(KeyEvent.VK_M, InputEvent.ALT_DOWN_MASK)
+        );
+        skipToMainContentItem.addActionListener(e -> {
+            tabbedPane.setSelectedIndex(0); // Focus first tab
+            dateField.requestFocusInWindow(); // Focus first field in form
+            announceToScreenReader("Main content focused.");
+        });
+        accessibilityMenu.add(skipToMainContentItem);
+
+        // Accessibility live region for announcements
+        liveRegionLabel.setText("");
+
+        // Move theme menu into Accessibility menu
+        accessibilityMenu.add(themeMenu);
+
+        JMenuItem aboutMenuItem = new JMenuItem(getString("about_title"));
+        aboutMenuItem.setFocusable(true);
         aboutMenuItem.addActionListener((ActionEvent e) -> {
-            JOptionPane.showMessageDialog(
+            JPanel aboutPanel = new JPanel(new BorderLayout());
+            JLabel aboutLabel = new JLabel(
+                "<html>" +
+                getString("about_text").replace("\n", "<br>") +
+                "</html>"
+            );
+            aboutLabel.setFocusable(true);
+            aboutPanel.add(aboutLabel, BorderLayout.CENTER);
+            showAccessibleDialog(
                 LedgerGUI.this,
-                """
-                Accessible Document Generation Ledger
-                Version 2025.0.0
-                \u00a9 2025 Michael Ryan Hunsaker, M.Ed., Ph.D.
-                All rights reserved.""",
-                "About",
-                JOptionPane.INFORMATION_MESSAGE
+                getString("about_title"),
+                aboutPanel
             );
         });
         JMenuItem exitMenuItem = new JMenuItem("Exit");
+        exitMenuItem.setFocusable(true);
         exitMenuItem.addActionListener((ActionEvent e) -> {
             System.exit(0);
         });
 
         for (String themeName : INTELLIJ_THEMES.keySet()) {
             JMenuItem item = new JMenuItem(themeName);
+            item.setFocusable(true);
             item.addActionListener(e -> setIntelliJTheme(themeName));
             themeMenu.add(item);
         }
         fileMenu.add(aboutMenuItem);
         fileMenu.add(exitMenuItem);
+
+        // Help menu with keyboard shortcuts
+        JMenuItem shortcutsMenuItem = new JMenuItem(
+            "Keyboard Shortcuts (Ctrl+.)"
+        );
+        shortcutsMenuItem.setFocusable(true);
+        shortcutsMenuItem.addActionListener(e -> showHelpDialog());
+        helpMenu.add(shortcutsMenuItem);
+
+        // Language selection menu
+        JMenu languageMenu = new JMenu(getString("language_menu"));
+        String[] languages = { "English", "Spanish" };
+        Locale[] locales = { Locale.ENGLISH, new Locale("es") };
+        for (int i = 0; i < languages.length; i++) {
+            JMenuItem langItem = new JMenuItem(languages[i]);
+            final Locale locale = locales[i];
+            langItem.addActionListener(e -> setLanguage(locale));
+            languageMenu.add(langItem);
+        }
+        accessibilityMenu.add(languageMenu);
+
         menuBar.add(fileMenu);
-        menuBar.add(themeMenu);
+        menuBar.add(accessibilityMenu);
+        menuBar.add(helpMenu);
         setJMenuBar(menuBar); // Use setJMenuBar() to add the menu bar to the JFrame
+
+        // Force UI update for all components to apply global font
+        SwingUtilities.updateComponentTreeUI(this);
+
+        // Setup error labels for validation feedback
+        setupErrorLabels();
+
+        // Setup live region for screen reader announcements
+        setupLiveRegion();
+
+        // Load persisted language preference
+        loadLanguagePreference();
+
+        // Load persisted font preferences
         // Input Panel
 
-        JPanel ProjectSetup = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectSetup = new JPanel(new GridLayout(0, 2, 10, 10));
         ProjectSetup.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
@@ -278,50 +518,193 @@ public class LedgerGUI extends JFrame {
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         );
 
+        // Group date field and help button in a panel
+        JPanel trackingDatePanel = new JPanel(new BorderLayout());
+        dateField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        trackingDatePanel.add(dateField, BorderLayout.CENTER);
+        JButton trackingDateHelpBtn = new JButton("?");
+        trackingDateHelpBtn.setFont(dateField.getFont());
+        trackingDateHelpBtn.setPreferredSize(
+            new Dimension(48, dateField.getPreferredSize().height)
+        );
+        trackingDateHelpBtn.setToolTipText("Get help with entering the date.");
+        trackingDateHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Date Help", dateField);
+        });
+        trackingDatePanel.add(trackingDateHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectTracking,
             "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
-            dateField
+            trackingDatePanel
         );
         dateField.setText(LocalDate.now().toString());
+        dateField.setToolTipText(getString("date_tooltip"));
+        dateField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("date_accessible"));
+        JButton dateHelpBtn = new JButton("?");
+        dateHelpBtn.setFont(dateField.getFont());
+        dateHelpBtn.setPreferredSize(
+            new Dimension(48, dateField.getPreferredSize().height)
+        );
+        dateHelpBtn.setToolTipText("Get help with entering the date.");
+        dateHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Date Help", dateField);
+        });
+        // Project Name input panel for Project Setup
+        setupProjectNameTextField = new JTextField();
+        setupProjectNameTextField.setFont(
+            new Font("SansSerif", Font.PLAIN, 32)
+        );
+        setupProjectNameTextField.setToolTipText("Enter a new Project Name");
+
+        JButton setupProjectNameHelpBtn = new JButton("?");
+        setupProjectNameHelpBtn.setFont(setupProjectNameTextField.getFont());
+        setupProjectNameHelpBtn.setPreferredSize(
+            new Dimension(
+                48,
+                setupProjectNameTextField.getPreferredSize().height
+            )
+        );
+        setupProjectNameHelpBtn.setToolTipText("Get help with Project Name.");
+        setupProjectNameHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                "Project Name Help",
+                setupProjectNameTextField
+            );
+        });
+
+        JPanel setupProjectNamePanel = new JPanel(new BorderLayout());
+        setupProjectNamePanel.add(
+            setupProjectNameTextField,
+            BorderLayout.CENTER
+        );
+        setupProjectNamePanel.add(setupProjectNameHelpBtn, BorderLayout.EAST);
+
+        addLabelAndField(
+            ProjectSetup,
+            "<html>Project Name:<br><i>(Enter a new project name)</i></html>",
+            setupProjectNamePanel
+        );
+
+        JPanel datePanel = new JPanel(new BorderLayout());
+        datePanel.add(dateField, BorderLayout.CENTER);
+        datePanel.add(dateHelpBtn, BorderLayout.EAST);
 
         addLabelAndField(
             ProjectSetup,
             "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
-            dateField
+            datePanel
         );
         String[] studentOptions = loadOptionsFromFile(
-            "students.json",
+            "json_files/students.json",
             "students"
         );
         String[] teacherOptions = loadOptionsFromFile(
-            "teachers.json",
+            "json_files/teachers.json",
             "teachers"
         );
-        String[] tviOptions = loadOptionsFromFile("tvis.json", "tvis");
+        String[] leaOptions = loadOptionsFromFile(
+            "json_files/LEAs.json",
+            "teachers"
+        );
+        String[] tviOptions = loadOptionsFromFile(
+            "json_files/tvis.json",
+            "tvis"
+        );
         String[] mediaTypeOptions = { "Braille", "Large Print", "Audio" };
-        dateField.setText(LocalDate.now().toString());
+        studentField = new JComboBox<>(studentOptions);
+        studentField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        studentField.setToolTipText(getString("student_tooltip"));
+        studentField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("student_accessible"));
+        JButton studentHelpBtn = new JButton("?");
+        studentHelpBtn.setFont(studentField.getFont());
+        studentHelpBtn.setPreferredSize(
+            new Dimension(48, studentField.getPreferredSize().height)
+        );
+        studentHelpBtn.setToolTipText("Get help with selecting the student.");
+        studentHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Student Help", studentField);
+        });
+        JPanel studentPanel = new JPanel(new BorderLayout());
+        studentPanel.add(studentField, BorderLayout.CENTER);
+        studentPanel.add(studentHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectSetup,
-            "<html>Student <br> <i>Select Initials from dropdown list</i></html>",
-            studentField = new JComboBox<>(studentOptions)
+            "<html>Student <br> <i>Select Student from dropdown list</i></html>",
+            studentPanel
         );
+
         String[] subjectOptions = loadOptionsFromFile(
-            "subjects.json",
+            "json_files/subjects.json",
             "subjects"
         );
         subjectField = new JComboBox<>(subjectOptions);
+        subjectField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        subjectField.setToolTipText(getString("subject_tooltip"));
+        subjectField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("subject_accessible"));
+        JButton subjectHelpBtn = new JButton("?");
+        subjectHelpBtn.setFont(subjectField.getFont());
+        subjectHelpBtn.setPreferredSize(
+            new Dimension(48, subjectField.getPreferredSize().height)
+        );
+        subjectHelpBtn.setToolTipText(
+            "Get help with selecting the academic subject."
+        );
+        subjectHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Subject Help", subjectField);
+        });
+        JPanel subjectPanel = new JPanel(new BorderLayout());
+        subjectPanel.add(subjectField, BorderLayout.CENTER);
+        subjectPanel.add(subjectHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectSetup,
             "<html>Academic Subject<br><i>Select Subject from Dropdown List</i></html>",
-            subjectField
-        );
-        String[] schoolOptions = loadOptionsFromFile("schools.json", "schools");
-        schoolField = new JComboBox<>(
-            loadOptionsFromFile("schools.json", "schools")
+            subjectPanel
         );
 
-        addLabelAndField(ProjectSetup, "School", schoolField);
+        String[] schoolOptions = loadOptionsFromFile(
+            "json_files/schools.json",
+            "schools"
+        );
+        schoolField = new JComboBox<>(
+            loadOptionsFromFile("json_files/schools.json", "schools")
+        );
+        schoolField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+
+        schoolField.setToolTipText(getString("school_tooltip"));
+        schoolField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("school_accessible"));
+        JButton schoolHelpBtn = new JButton("?");
+        schoolHelpBtn.setToolTipText("Get help with selecting the school.");
+        schoolHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                "School Help",
+                new JLabel(
+                    "<html>Select the school associated with the student from the dropdown list. If the school is missing, contact your administrator. This field links the work to the correct educational institution.</html>"
+                )
+            );
+            announceToScreenReader(
+                "Select the school associated with the student from the dropdown list."
+            );
+        });
+        // Group school field and help button in a panel
+        JPanel schoolPanel = new JPanel(new BorderLayout());
+        schoolPanel.add(schoolField, BorderLayout.CENTER);
+        // Set font and preferred size for schoolHelpBtn to match other components
+        schoolHelpBtn.setFont(schoolField.getFont());
+        schoolHelpBtn.setPreferredSize(
+            new Dimension(48, schoolField.getPreferredSize().height)
+        );
+        schoolPanel.add(schoolHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "School", schoolPanel);
 
         ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
         ProjectTracking.setBorder(
@@ -333,103 +716,308 @@ public class LedgerGUI extends JFrame {
             BorderFactory.createTitledBorder("Project Status")
         );
 
-        System.out.println("Initializing Proof Status field...");
+        logger.info("Initializing Proof Status field...");
         if (proofStatusField.getItemCount() == 0) {
-            System.err.println(
+            logger.error(
                 "Error: Proof Status field is empty after loading from proof_status.json."
             );
         } else {
-            System.out.println(
-                "Proof Status field loaded successfully with " +
-                proofStatusField.getItemCount() +
-                " items."
+            logger.info(
+                "Proof Status field loaded successfully with {} items.",
+                proofStatusField.getItemCount()
             );
         }
-        addLabelAndField(projectStatusPanel, "Proof Status", proofStatusField);
+        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+
+        // --- Language selector menu ---
+        JMenuBar menuBar = getJMenuBar();
+        if (menuBar == null) {
+            menuBar = new JMenuBar();
+            setJMenuBar(menuBar);
+        }
+        JMenu accessibilityMenu = new JMenu(getString("accessibility_menu"));
+        // languageMenu already declared above, remove duplicate
+        JMenuItem englishItem = new JMenuItem("English");
+        JMenuItem spanishItem = new JMenuItem("Español");
+        languageMenu.add(englishItem);
+        languageMenu.add(spanishItem);
+        accessibilityMenu.add(languageMenu);
+        menuBar.add(accessibilityMenu);
+
+        englishItem.addActionListener(e -> setLanguage("en"));
+        spanishItem.addActionListener(e -> setLanguage("es"));
+        proofStatusField.setToolTipText(getString("proof_status_help"));
+        proofStatusField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("proof_status_help"));
+        JButton proofStatusHelpBtn = new JButton("?");
+        proofStatusHelpBtn.setFont(proofStatusField.getFont());
+        proofStatusHelpBtn.setPreferredSize(
+            new Dimension(48, proofStatusField.getPreferredSize().height)
+        );
+        proofStatusHelpBtn.setToolTipText(getString("proof_status_help"));
+        proofStatusHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("proof_status_help"),
+                proofStatusField
+            );
+        });
+        JPanel proofStatusPanel = new JPanel(new BorderLayout());
+        proofStatusPanel.add(proofStatusField, BorderLayout.CENTER);
+        proofStatusPanel.add(proofStatusHelpBtn, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Proof Status", proofStatusPanel);
         //addLabelAndField(inputPanel, "Delivery Mode", deliveryModeField);
 
-        System.out.println("Initializing Teachers field...");
-        teacherField = new JList<>(new String[] { "Teacher 1", "Teacher 2" });
+        logger.info("Initializing Teachers field...");
+        teacherField = new JList<>(teacherOptions);
         if (teacherField == null) {
-            System.err.println("Error: Teachers field is null.");
+            logger.error("Error: Teachers field is null.");
         }
-        addLabelAndField(ProjectSetup, "Teachers", teacherField);
         teacherField.setSelectionMode(
             ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         );
+        JScrollPane teacherScrollPane = new JScrollPane(teacherField);
+        teacherScrollPane.setPreferredSize(new Dimension(200, 100));
+        teacherScrollPane.setToolTipText(getString("teacher_tooltip"));
+        teacherScrollPane
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("teacher_accessible"));
+        JButton teacherHelpBtn = new JButton("?");
+        teacherHelpBtn.setFont(teacherScrollPane.getFont());
+        teacherHelpBtn.setPreferredSize(
+            new Dimension(48, teacherScrollPane.getPreferredSize().height)
+        );
+        teacherHelpBtn.setToolTipText("Get help with selecting teachers.");
+        teacherHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Teachers Help", teacherScrollPane);
+        });
+        JPanel teacherPanel = new JPanel(new BorderLayout());
+        teacherPanel.add(teacherScrollPane, BorderLayout.CENTER);
+        teacherPanel.add(teacherHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "Teachers", teacherPanel);
 
-        System.out.println("Initializing TVIs field...");
+        logger.info("Initializing LEA field...");
+        leaField = new JComboBox<>(leaOptions);
+        leaField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        leaField.setPreferredSize(new Dimension(200, 28));
+        leaField.setToolTipText(getString("lea_tooltip"));
+        leaField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("lea_accessible"));
+        JButton leaHelpBtn = new JButton("?");
+        leaHelpBtn.setFont(leaField.getFont());
+        leaHelpBtn.setPreferredSize(
+            new Dimension(48, leaField.getPreferredSize().height)
+        );
+        leaHelpBtn.setToolTipText(
+            "Get help with selecting the Local Education Agency (LEA)."
+        );
+        leaHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "LEA Help", leaField);
+        });
+        JPanel leaPanel = new JPanel(new BorderLayout());
+        leaPanel.add(leaField, BorderLayout.CENTER);
+        leaPanel.add(leaHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "LEA", leaPanel);
+
+        logger.info("Initializing TVIs field...");
         tviField = new JList<>(new String[] { "TVI 1", "TVI 2" });
         if (tviField == null) {
-            System.err.println("Error: TVIs field is null.");
+            logger.error("Error: TVIs field is null.");
         }
-        addLabelAndField(ProjectSetup, "TVIs", tviField);
         tviField.setSelectionMode(
             ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         );
-        tviField.setSelectionMode(
-            ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+        JScrollPane tviScrollPane = new JScrollPane(tviField);
+        tviScrollPane.setPreferredSize(new Dimension(200, 100));
+        tviScrollPane.setToolTipText(getString("tvi_tooltip"));
+        tviScrollPane
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("tvi_accessible"));
+        JButton tviHelpBtn = new JButton("?");
+        tviHelpBtn.setFont(tviScrollPane.getFont());
+        tviHelpBtn.setPreferredSize(
+            new Dimension(48, tviScrollPane.getPreferredSize().height)
         );
-        System.out.println("Initializing Media Type field...");
+        tviHelpBtn.setToolTipText(
+            "Get help with selecting the Teacher of the Visually Impaired (TVI)."
+        );
+        tviHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "TVI Help", tviScrollPane);
+        });
+        JPanel tviPanel = new JPanel(new BorderLayout());
+        tviPanel.add(tviScrollPane, BorderLayout.CENTER);
+        tviPanel.add(tviHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "TVIs", tviPanel);
+        logger.info("Initializing Media Type field...");
         if (mediaTypeField == null) {
-            System.err.println("Error: Media Type field is null.");
+            logger.error("Error: Media Type field is null.");
         }
         mediaTypeField = new JComboBox<>(
-            loadOptionsFromFile("media_type.json", "media_types")
+            loadOptionsFromFile("json_files/media_type.json", "media_types")
         );
-        // Logging for mediaTypeField moved to constructor
-        addLabelAndField(ProjectSetup, "Media Type", mediaTypeField);
-        System.out.println("Initializing Project Type field...");
-        projectField = new JComboBox<>(getProjects());
+        mediaTypeField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        mediaTypeField.setToolTipText(getString("media_type_tooltip"));
+        mediaTypeField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("media_type_accessible"));
+        JButton mediaTypeHelpBtn = new JButton("?");
+        mediaTypeHelpBtn.setFont(mediaTypeField.getFont());
+        mediaTypeHelpBtn.setPreferredSize(
+            new Dimension(48, mediaTypeField.getPreferredSize().height)
+        );
+        mediaTypeHelpBtn.setToolTipText(
+            "Get help with selecting the media type."
+        );
+        mediaTypeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Media Type Help", mediaTypeField);
+        });
+        JPanel mediaTypePanel = new JPanel(new BorderLayout());
+        mediaTypePanel.add(mediaTypeField, BorderLayout.CENTER);
+        mediaTypePanel.add(mediaTypeHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "Media Type", mediaTypePanel);
+        logger.info("Initializing Project Type field...");
+        projectField = new JComboBox<>(getProjectTypesFromJson());
+        projectField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         if (projectField == null) {
-            System.err.println("Error: Project Type field is null.");
+            logger.error("Error: Project Type field is null.");
         }
-        addLabelAndField(ProjectSetup, "Project Type", projectField);
-        System.out.println("Initializing Time field...");
+        projectField.setToolTipText(getString("project_tooltip"));
+        projectField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("project_accessible"));
+        JButton projectHelpBtn = new JButton("?");
+        projectHelpBtn.setFont(projectField.getFont());
+        projectHelpBtn.setPreferredSize(
+            new Dimension(48, projectField.getPreferredSize().height)
+        );
+        projectHelpBtn.setToolTipText(
+            "Get help with selecting the project type."
+        );
+        projectHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Project Type Help", projectField);
+        });
+        JPanel projectPanel = new JPanel(new BorderLayout());
+        projectPanel.add(projectField, BorderLayout.CENTER);
+        projectPanel.add(projectHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "Project Type", projectPanel);
+        logger.info("Initializing Time field...");
         timeField = new JTextField();
         if (timeField == null) {
-            System.err.println("Error: Time field is null.");
+            logger.error("Error: Time field is null.");
         }
-        addLabelAndField(
-            ProjectTracking,
-            "<html>Time: <br>(Rounded UP to Nearest .25 hr fter 5 min)</html>",
-            timeField
+        timeField.setToolTipText(getString("time_tooltip"));
+        timeField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("time_accessible"));
+        JButton timeHelpBtn = new JButton("?");
+        timeHelpBtn.setFont(timeField.getFont());
+        timeHelpBtn.setPreferredSize(
+            new Dimension(48, timeField.getPreferredSize().height)
         );
+        timeHelpBtn.setToolTipText("Get help with entering the time spent.");
+        timeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Time Help", timeField);
+        });
+        JPanel timePanel = new JPanel(new BorderLayout());
+        timePanel.add(timeField, BorderLayout.CENTER);
+        timePanel.add(timeHelpBtn, BorderLayout.EAST);
+        // Removed duplicate time field from Project Status panel
 
         // Move fields to Project Status Panel
-        System.out.println("Initializing Updated field...");
+        logger.info("Initializing Updated field...");
         if (updatedField == null) {
-            System.err.println("Error: Updated field is null.");
+            logger.error("Error: Updated field is null.");
         }
+        updatedField.setPreferredSize(new Dimension(200, 28));
+        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        JButton updatedHelpBtn = new JButton("?");
+        updatedHelpBtn.setFont(updatedField.getFont());
+        updatedHelpBtn.setPreferredSize(
+            new Dimension(48, updatedField.getPreferredSize().height)
+        );
+        updatedHelpBtn.setToolTipText("Get help with the Updated field.");
+        updatedHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Updated Help", updatedField);
+        });
+        JPanel updatedPanel = new JPanel(new BorderLayout());
+        updatedPanel.add(updatedField, BorderLayout.CENTER);
+        updatedPanel.add(updatedHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             projectStatusPanel,
             "<html>Updated: <br>(YYYY-MM-DD)</html>",
-            updatedField
+            updatedPanel
         );
         updatedField.setVisible(true); // Ensure visibility
 
-        JLabel notesLabel = new JLabel("Notes:");
         notesField = new JTextArea(5, 20); // Multiline text area
         notesField.setLineWrap(true);
         notesField.setWrapStyleWord(true);
         JScrollPane notesScrollPane = new JScrollPane(notesField);
-        projectStatusPanel.add(notesLabel);
-        projectStatusPanel.add(notesScrollPane);
-
-        addLabelAndField(ProjectSetup, "Delivery Mode", deliveryModeField);
-
-        JLabel completeLabel = new JLabel("Complete:");
-        completeCheckBox = new JCheckBox();
-        completeCheckBox.setEnabled(true); // Activate the checkbox
-        completeLabel.setLabelFor(completeCheckBox);
-        projectStatusPanel.add(completeLabel);
-        projectStatusPanel.add(completeCheckBox);
-        completeCheckBox.setMnemonic(KeyEvent.VK_C);
-        completeCheckBox
+        notesScrollPane.setPreferredSize(new Dimension(200, 60));
+        notesScrollPane.setToolTipText(getString("notes_tooltip"));
+        notesScrollPane
             .getAccessibleContext()
-            .setAccessibleDescription("Check if the task is complete");
-        completeCheckBox.setVisible(true); // Ensure visibility
-        submitButton = new JButton("Submit");
+            .setAccessibleDescription(getString("notes_accessible"));
+        JButton notesHelpBtn = new JButton("?");
+        notesHelpBtn.setFont(notesScrollPane.getFont());
+        notesHelpBtn.setPreferredSize(
+            new Dimension(48, notesScrollPane.getPreferredSize().height)
+        );
+        notesHelpBtn.setToolTipText("Get help with entering notes.");
+        notesHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Notes Help", notesScrollPane);
+        });
+        JPanel notesPanel = new JPanel(new BorderLayout());
+        notesPanel.add(notesScrollPane, BorderLayout.CENTER);
+        notesPanel.add(notesHelpBtn, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Notes", notesPanel);
+
+        JButton deliveryHelpBtn = new JButton("?");
+        deliveryHelpBtn.setFont(deliveryModeField.getFont());
+        deliveryHelpBtn.setPreferredSize(
+            new Dimension(48, deliveryModeField.getPreferredSize().height)
+        );
+        deliveryHelpBtn.setToolTipText(
+            "Get help with selecting the delivery mode."
+        );
+        deliveryModeField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        deliveryHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Delivery Mode Help", deliveryModeField);
+        });
+        JPanel deliveryPanel = new JPanel(new BorderLayout());
+        deliveryPanel.add(deliveryModeField, BorderLayout.CENTER);
+        deliveryPanel.add(deliveryHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "Delivery Mode", deliveryPanel);
+
+        completeComboBox = new JComboBox<>(new String[] { "No", "Yes" });
+        completeComboBox.setSelectedIndex(0); // Default to "No"
+        completeComboBox.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        completeComboBox.setToolTipText(
+            "Select Yes if the project or task is complete, No otherwise."
+        );
+        completeComboBox
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Select Yes if the task is complete, No otherwise."
+            );
+        JButton completeHelpBtn = new JButton("?");
+        completeHelpBtn.setFont(completeComboBox.getFont());
+        completeHelpBtn.setPreferredSize(
+            new Dimension(48, completeComboBox.getPreferredSize().height)
+        );
+        completeHelpBtn.setToolTipText("Get help with the Complete field.");
+        completeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Complete Help", completeComboBox);
+        });
+        JPanel completePanel = new JPanel(new BorderLayout());
+        completePanel.add(completeComboBox, BorderLayout.CENTER);
+        completePanel.add(completeHelpBtn, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Complete", completePanel);
+
+        submitButton = new JButton("  Submit");
+        submitButton.setPreferredSize(new Dimension(150, 50));
         submitButton.setMnemonic(KeyEvent.VK_S);
         submitButton.addActionListener(e -> submitData());
         submitButton
@@ -452,11 +1040,7 @@ public class LedgerGUI extends JFrame {
                 "Generate a PDF report for a specified date range"
             );
 
-        JPanel buttonPanel = new JPanel(
-            new FlowLayout(FlowLayout.CENTER, 10, 0)
-        );
-        buttonPanel.add(submitButton);
-        ProjectSetup.add(buttonPanel);
+        ProjectSetup.add(submitButton);
 
         JPanel projectSetupPanel = new JPanel(new BorderLayout());
         projectSetupPanel.add(ProjectSetup, BorderLayout.NORTH);
@@ -464,7 +1048,8 @@ public class LedgerGUI extends JFrame {
         // Table
         tableModel = new DefaultTableModel(
             new Object[][] {}, // Empty data
-            new String[] { // Column names
+            new String[] {
+                // Column names
                 "Date",
                 "Student",
                 "Subject",
@@ -481,15 +1066,10 @@ public class LedgerGUI extends JFrame {
         JScrollPane scrollPane = new JScrollPane(dataTable);
 
         JPanel filePickerPanel = new JPanel(new GridLayout(0, 2, 10, 50));
-        String[] fileTypes = {
-            "originals",
-            "graphics",
-            "ebraille",
-            "DAISY",
-            "braille",
-            "accessibleDocument",
-            "3dprint",
-        };
+        String[] fileTypes = loadOptionsFromFile(
+            "json_files/media_type.json",
+            "media_types"
+        );
         for (String fileType : fileTypes) {
             JButton filePickerButton = new JButton(
                 "Select " + fileType + " File"
@@ -510,6 +1090,39 @@ public class LedgerGUI extends JFrame {
             });
             filePickerPanel.add(filePickerButton);
         }
+
+        // Accessible drag-and-drop area
+        JPanel dragDropPanel = new JPanel();
+        dragDropPanel.setBorder(
+            BorderFactory.createTitledBorder(
+                "Drop files here or use the button"
+            )
+        );
+        dragDropPanel.setFocusable(true);
+        dragDropPanel
+            .getAccessibleContext()
+            .setAccessibleName("File Drop Area");
+        dragDropPanel
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Drop files here or use the file picker button. Tab to focus."
+            );
+        JLabel dragDropInstructions = new JLabel(
+            "<html>You can use Tab to focus the file picker button, or drag and drop files here.<br>Screen reader users: focus this area for instructions.</html>"
+        );
+        dragDropPanel.add(dragDropInstructions);
+        dragDropPanel.addFocusListener(
+            new FocusAdapter() {
+                public void focusGained(FocusEvent e) {
+                    announceToScreenReader(
+                        "File drop area focused. You can drop files here or use the file picker button."
+                    );
+                }
+            }
+        );
+        // Drag-and-drop logic can be added here if needed
+        filePickerPanel.add(dragDropPanel);
+
         tabbedPane.addTab("Project Setup", projectSetupPanel);
         add(tabbedPane, BorderLayout.CENTER);
 
@@ -524,33 +1137,185 @@ public class LedgerGUI extends JFrame {
         );
 
         // Table for Project Tracking
-        addLabelAndField(
-            projectStatusPanel,
-            "Project Name",
-            projectNameField = new JComboBox<>(getProjectNames())
+        // Reorder: Project Name at the top
+        projectNameField = new JComboBox<>(getProjectNames());
+        projectNameField.setPreferredSize(new Dimension(200, 28));
+        projectNameField.setToolTipText(getString("project_name_help"));
+        projectNameField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("project_name_help"));
+        JButton projectNameHelpBtn = new JButton("?");
+        projectNameHelpBtn.setFont(projectNameField.getFont());
+        projectNameHelpBtn.setPreferredSize(
+            new Dimension(48, projectNameField.getPreferredSize().height)
         );
+        projectNameHelpBtn.setToolTipText(getString("project_name_help"));
+        projectNameHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_name_help"),
+                projectNameField
+            );
+        });
+        JPanel projectNamePanel = new JPanel(new BorderLayout());
+        projectNamePanel.add(projectNameField, BorderLayout.CENTER);
+        projectNamePanel.add(projectNameHelpBtn, BorderLayout.EAST);
+
+        refreshProjectNames(); // Now safe to call, projectNameField is initialized
+
+        // Remove Project Status title/border
+        projectStatusPanel.setBorder(null);
+
+        // Add fields in desired order
+        projectStatusPanel.removeAll();
+        addLabelAndField(projectStatusPanel, "Project Name", projectNamePanel);
+
+        // Updated field
+        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        updatedField.setToolTipText(
+            "Enter the last updated date for this project."
+        );
+        updatedField
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Enter the last updated date for this project."
+            );
+        JButton updatedHelpBtnStatus = new JButton("?");
+        updatedHelpBtnStatus.setFont(updatedField.getFont());
+        updatedHelpBtnStatus.setPreferredSize(
+            new Dimension(48, updatedField.getPreferredSize().height)
+        );
+        updatedHelpBtnStatus.setToolTipText("Get help with the Updated field.");
+        updatedHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(this, "Updated Help", updatedField);
+        });
+        JPanel updatedPanelStatus = new JPanel(new BorderLayout());
+        updatedPanelStatus.add(updatedField, BorderLayout.CENTER);
+        updatedPanelStatus.add(updatedHelpBtnStatus, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Updated", updatedPanelStatus);
+
+        // Element of Project
+        projectElementField = new JComboBox<>(
+            loadOptionsFromFile(
+                "json_files/project_element.json",
+                "project_elements"
+            )
+        );
+        projectElementField.setPreferredSize(new Dimension(200, 28));
+        projectElementField.setToolTipText(getString("project_element_help"));
+        projectElementField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("project_element_help"));
+        JButton projectElementHelpBtn = new JButton("?");
+        projectElementHelpBtn.setFont(projectElementField.getFont());
+        projectElementHelpBtn.setPreferredSize(
+            new Dimension(48, projectElementField.getPreferredSize().height)
+        );
+        projectElementHelpBtn.setToolTipText(getString("project_element_help"));
+        projectElementHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_element_help"),
+                projectElementField
+            );
+        });
+        JPanel projectElementPanel = new JPanel(new BorderLayout());
+        projectElementPanel.add(projectElementField, BorderLayout.CENTER);
+        projectElementPanel.add(projectElementHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             projectStatusPanel,
             "Element of Project",
-            projectElementField = new JComboBox<>(
-                new String[] {
-                    "Braille",
-                    "Graphics",
-                    "Formatting",
-                    "Proofreading",
-                    "Embossing",
-                }
-            )
-        );
-        addLabelAndField(
-            projectStatusPanel,
-            "Time (HH:MM)",
-            projectTimeField = new JTextField()
+            projectElementPanel
         );
 
+        // Time
+        projectTimeField = new JTextField();
+        projectTimeField.setPreferredSize(new Dimension(200, 28));
+        projectTimeField.setToolTipText(getString("project_time_help"));
+        projectTimeField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("project_time_help"));
+        JButton projectTimeHelpBtn = new JButton("?");
+        projectTimeHelpBtn.setFont(projectTimeField.getFont());
+        projectTimeHelpBtn.setPreferredSize(
+            new Dimension(48, projectTimeField.getPreferredSize().height)
+        );
+        projectTimeHelpBtn.setToolTipText(getString("project_time_help"));
+        projectTimeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_time_help"),
+                projectTimeField
+            );
+        });
+        JPanel projectTimePanel = new JPanel(new BorderLayout());
+        projectTimePanel.add(projectTimeField, BorderLayout.CENTER);
+        projectTimePanel.add(projectTimeHelpBtn, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Time (HH:MM)", projectTimePanel);
+
+        // Proof Status
+        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        proofStatusField.setToolTipText(getString("proof_status_help"));
+        proofStatusField
+            .getAccessibleContext()
+            .setAccessibleDescription(getString("proof_status_help"));
+        JButton proofStatusHelpBtnStatus = new JButton("?");
+        proofStatusHelpBtnStatus.setFont(proofStatusField.getFont());
+        proofStatusHelpBtnStatus.setPreferredSize(
+            new Dimension(48, proofStatusField.getPreferredSize().height)
+        );
+        proofStatusHelpBtnStatus.setToolTipText(getString("proof_status_help"));
+        proofStatusHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("proof_status_help"),
+                proofStatusField
+            );
+        });
+        JPanel proofStatusPanelStatus = new JPanel(new BorderLayout());
+        proofStatusPanelStatus.add(proofStatusField, BorderLayout.CENTER);
+        proofStatusPanelStatus.add(proofStatusHelpBtnStatus, BorderLayout.EAST);
+        addLabelAndField(
+            projectStatusPanel,
+            "Proof Status",
+            proofStatusPanelStatus
+        );
+
+        // Completed
+        completedField = new JComboBox<>(new String[] { "No", "Yes" });
+        completedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        completedField.setToolTipText(
+            "Select Yes if the project is completed, No otherwise."
+        );
+        completedField
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Select Yes if the project is completed, No otherwise."
+            );
+        JButton completedHelpBtnStatus = new JButton("?");
+        completedHelpBtnStatus.setFont(completedField.getFont());
+        completedHelpBtnStatus.setPreferredSize(
+            new Dimension(48, completedField.getPreferredSize().height)
+        );
+        completedHelpBtnStatus.setToolTipText(
+            "Get help with the Completed field."
+        );
+        completedHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(this, "Completed Help", completedField);
+        });
+        JPanel completedPanelStatus = new JPanel(new BorderLayout());
+        completedPanelStatus.add(completedField, BorderLayout.CENTER);
+        completedPanelStatus.add(completedHelpBtnStatus, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Completed", completedPanelStatus);
+
         JButton addTrackingButton = new JButton("Add Tracking Info");
+        addTrackingButton.setPreferredSize(new Dimension(150, 50));
         addTrackingButton.addActionListener(e -> addTrackingInfo());
         projectStatusPanel.add(addTrackingButton);
+
+        // Add Generate PDF Button to Project Status panel
+        generatePdfButton.setPreferredSize(new Dimension(150, 50));
+        projectStatusPanel.add(generatePdfButton);
 
         // Add Project Status Panel as main panel
         JPanel projectStatusMainPanel = new JPanel(new BorderLayout());
@@ -566,6 +1331,583 @@ public class LedgerGUI extends JFrame {
         // Set up focus traversal
         setFocusTraversalPolicy(new LayoutFocusTraversalPolicy());
         setFocusCycleRoot(true);
+
+        // Make all major components focusable for tab navigation
+        dateField.setFocusable(true);
+        updatedField.setFocusable(true);
+        if (teacherField != null) teacherField.setFocusable(true);
+        if (tviField != null) tviField.setFocusable(true);
+        if (leaField != null) leaField.setFocusable(true);
+        if (mediaTypeField != null) mediaTypeField.setFocusable(true);
+        if (proofStatusField != null) proofStatusField.setFocusable(true);
+        if (deliveryModeField != null) deliveryModeField.setFocusable(true);
+        if (projectNameField != null) projectNameField.setFocusable(true);
+        if (notesField != null) notesField.setFocusable(true);
+        if (projectElementField != null) projectElementField.setFocusable(true);
+        if (projectTimeField != null) projectTimeField.setFocusable(true);
+        if (timeField != null) timeField.setFocusable(true);
+        if (projectField != null) projectField.setFocusable(true);
+        if (schoolField != null) schoolField.setFocusable(true);
+        if (studentField != null) studentField.setFocusable(true);
+        if (subjectField != null) subjectField.setFocusable(true);
+        completeComboBox.setFocusable(true);
+        submitButton.setFocusable(true);
+        generatePdfButton.setFocusable(true);
+        dataTable.setFocusable(true);
+
+        // Table accessibility: enable keyboard navigation and selection
+        dataTable.setRowSelectionAllowed(true);
+        dataTable.setColumnSelectionAllowed(true);
+        dataTable.setCellSelectionEnabled(true);
+        dataTable.getTableHeader().setFocusable(true);
+        dataTable.getTableHeader().setReorderingAllowed(false);
+
+        // Add global key listener for Ctrl+.
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(
+                e -> {
+                    if (
+                        e.getID() == KeyEvent.KEY_PRESSED &&
+                        e.isControlDown() &&
+                        e.getKeyCode() == KeyEvent.VK_PERIOD
+                    ) {
+                        showHelpDialog();
+                        return true;
+                    }
+                    return false;
+                }
+            );
+    }
+
+    /**
+     * Show a dialog with keyboard shortcuts and accessibility help.
+     */
+    private void showHelpDialog() {
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        JLabel helpLabel = new JLabel(getString("help_text"));
+        helpLabel.setFocusable(true);
+        contentPanel.add(helpLabel, BorderLayout.CENTER);
+        showAccessibleDialog(this, getString("help_title"), contentPanel);
+    }
+
+    /**
+     * Setup the hidden live region label for screen reader announcements.
+     */
+    private void setupLiveRegion() {
+        liveRegionLabel.setVisible(false); // Hidden from visual UI
+        liveRegionLabel
+            .getAccessibleContext()
+            .setAccessibleName("Status Message");
+        liveRegionLabel
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Live region for screen reader announcements"
+            );
+        this.add(liveRegionLabel, BorderLayout.SOUTH); // Add to frame, but hidden
+    }
+
+    /**
+     * Announce a message to screen readers via the live region.
+     */
+    private void announceToScreenReader(String message) {
+        liveRegionLabel.setText(message);
+        liveRegionLabel
+            .getAccessibleContext()
+            .firePropertyChange(
+                AccessibleContext.ACCESSIBLE_VISIBLE_DATA_PROPERTY,
+                null,
+                message
+            );
+    }
+
+    /**
+     * Show an accessible modal dialog.
+     * @param parent The parent frame.
+     * @param title The dialog title.
+     * @param content The main content component.
+     */
+    private void showAccessibleDialog(
+        JFrame parent,
+        String title,
+        JComponent content
+    ) {
+        JDialog dialog = new JDialog(parent, title, true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(content, BorderLayout.CENTER);
+
+        // Announce dialog to screen readers
+        announceToScreenReader(title + " dialog opened.");
+
+        // Trap focus within dialog
+        dialog.setFocusable(true);
+        dialog.addWindowFocusListener(
+            new WindowAdapter() {
+                public void windowGainedFocus(WindowEvent e) {
+                    content.requestFocusInWindow();
+                }
+            }
+        );
+
+        // Esc key closes dialog
+        dialog
+            .getRootPane()
+            .registerKeyboardAction(
+                e -> dialog.dispose(),
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+            );
+
+        // Add Close button
+        JButton closeButton = new JButton("Close");
+        closeButton.setFont(helpDialogFont);
+        closeButton.addActionListener(e -> dialog.dispose());
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(closeButton);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+
+        // Set font for all components in the dialog
+        setFontRecursively(content, helpDialogFont);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(parent);
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Recursively set font for all components in a container.
+     */
+    private void setFontRecursively(Component comp, Font font) {
+        comp.setFont(font);
+        if (comp instanceof Container) {
+            for (Component child : ((Container) comp).getComponents()) {
+                setFontRecursively(child, font);
+            }
+        }
+    }
+
+    /**
+     * Sets the global UI font size for all components.
+     * @param sizeName The size label ("Default", "Large", "Extra Large", "XXL").
+     */
+    private void setUIFontSize(String sizeName) {
+        int size = 32;
+        FontUIResource fontRes = new FontUIResource(
+            "SansSerif",
+            Font.PLAIN,
+            size
+        );
+        setGlobalUIFont(fontRes);
+
+        // Apply font size to major form components and help dialogs
+        Font fieldFont = new Font("SansSerif", Font.PLAIN, size);
+        if (dateField != null) dateField.setFont(fieldFont);
+        if (studentField != null) studentField.setFont(fieldFont);
+        if (subjectField != null) subjectField.setFont(fieldFont);
+        if (schoolField != null) schoolField.setFont(fieldFont);
+        if (teacherField != null) teacherField.setFont(fieldFont);
+        if (leaField != null) leaField.setFont(fieldFont);
+        if (tviField != null) tviField.setFont(fieldFont);
+        if (mediaTypeField != null) mediaTypeField.setFont(fieldFont);
+        if (projectField != null) projectField.setFont(fieldFont);
+        if (timeField != null) timeField.setFont(fieldFont);
+        if (notesField != null) notesField.setFont(fieldFont);
+        if (deliveryModeField != null) deliveryModeField.setFont(fieldFont);
+        if (projectNameField != null) projectNameField.setFont(fieldFont);
+        if (projectElementField != null) projectElementField.setFont(fieldFont);
+        if (projectTimeField != null) projectTimeField.setFont(fieldFont);
+        if (updatedField != null) updatedField.setFont(
+            new Font("SansSerif", Font.PLAIN, 32)
+        );
+        if (completeComboBox != null) completeComboBox.setFont(fieldFont);
+        // Ensure all dropdowns and text fields in Project Setup and Project Status use 32pt
+        if (proofStatusField != null) proofStatusField.setFont(
+            new Font("SansSerif", Font.PLAIN, 32)
+        );
+        if (deliveryModeField != null) deliveryModeField.setFont(
+            new Font("SansSerif", Font.PLAIN, 32)
+        );
+        if (projectNameField != null) projectNameField.setFont(
+            new Font("SansSerif", Font.PLAIN, 32)
+        );
+
+        // Error labels and help buttons
+        if (dateErrorLabel != null) dateErrorLabel.setFont(fieldFont);
+        if (studentErrorLabel != null) studentErrorLabel.setFont(fieldFont);
+        if (schoolErrorLabel != null) schoolErrorLabel.setFont(fieldFont);
+        if (projectErrorLabel != null) projectErrorLabel.setFont(fieldFont);
+        if (timeErrorLabel != null) timeErrorLabel.setFont(fieldFont);
+        if (teacherErrorLabel != null) teacherErrorLabel.setFont(fieldFont);
+        if (tviErrorLabel != null) tviErrorLabel.setFont(fieldFont);
+        if (subjectErrorLabel != null) subjectErrorLabel.setFont(fieldFont);
+        if (notesErrorLabel != null) notesErrorLabel.setFont(fieldFont);
+        if (liveRegionLabel != null) liveRegionLabel.setFont(fieldFont);
+    }
+
+    // --- Keyboard Shortcuts Dialog and Logic ---
+
+    /**
+     * List of shortcut actions available in the application.
+     */
+    private final String[] shortcutActions = {
+        "Help",
+        "Submit",
+        "Generate PDF",
+        "Skip to Main Content",
+    };
+
+    /**
+     * List of common keyboard shortcuts for accessibility and productivity.
+     */
+    private final String[] commonShortcuts = {
+        "Ctrl+.",
+        "Ctrl+Enter",
+        "Alt+M",
+        "Ctrl+G",
+        "Alt+S",
+        "Alt+H",
+    };
+
+    /**
+     * Map of shortcut action names to their corresponding dropdowns for customization.
+     */
+    private Map<String, JComboBox<String>> shortcutDropdowns = new HashMap<>();
+    /**
+     * Map of shortcut action names to their corresponding custom shortcut buttons.
+     */
+    private Map<String, JButton> customShortcutButtons = new HashMap<>();
+
+    private void showKeyboardShortcutsDialog() {
+        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+        shortcutDropdowns.clear();
+        customShortcutButtons.clear();
+
+        for (String action : shortcutActions) {
+            panel.add(new JLabel(action));
+            JComboBox<String> combo = new JComboBox<>(commonShortcuts);
+            combo.setSelectedItem(getShortcutPref(action));
+            shortcutDropdowns.put(action, combo);
+            panel.add(combo);
+
+            JButton customBtn = new JButton("Define custom keystroke");
+            customBtn.addActionListener(e ->
+                showCustomKeystrokeDialog(action, combo)
+            );
+            customShortcutButtons.put(action, customBtn);
+            panel.add(customBtn);
+        }
+
+        JButton saveBtn = new JButton("Save");
+        saveBtn.addActionListener(e -> {
+            for (String action : shortcutActions) {
+                setShortcutPref(
+                    action,
+                    (String) shortcutDropdowns.get(action).getSelectedItem()
+                );
+            }
+            updateAllShortcuts();
+        });
+
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(saveBtn);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(panel, BorderLayout.CENTER);
+        mainPanel.add(btnPanel, BorderLayout.SOUTH);
+
+        showAccessibleDialog(this, "Keyboard Shortcuts", mainPanel);
+    }
+
+    private void showCustomKeystrokeDialog(
+        String action,
+        JComboBox<String> combo
+    ) {
+        JDialog dialog = new JDialog(this, "Define Custom Keystroke", true);
+        JLabel info = new JLabel("Press your desired key combination...");
+        JTextField keyField = new JTextField();
+        keyField.setEditable(false);
+        keyField.setFocusable(true);
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(info, BorderLayout.NORTH);
+        dialog.add(keyField, BorderLayout.CENTER);
+
+        final KeyStroke[] captured = new KeyStroke[1];
+
+        keyField.addKeyListener(
+            new KeyAdapter() {
+                public void keyPressed(KeyEvent e) {
+                    captured[0] = KeyStroke.getKeyStrokeForEvent(e);
+                    keyField.setText(
+                        KeyEvent.getKeyModifiersText(e.getModifiers()) +
+                        "+" +
+                        KeyEvent.getKeyText(e.getKeyCode())
+                    );
+                }
+            }
+        );
+
+        JButton okBtn = new JButton("OK");
+        okBtn.addActionListener(e -> {
+            if (captured[0] != null) {
+                setShortcutPref(action, keyField.getText());
+                combo.setSelectedItem(keyField.getText());
+                updateAllShortcuts();
+            }
+            dialog.dispose();
+        });
+        dialog.add(okBtn, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private String getShortcutPref(String action) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        return prefs.get("shortcut_" + action, getDefaultShortcut(action));
+    }
+
+    private void setShortcutPref(String action, String shortcut) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        prefs.put("shortcut_" + action, shortcut);
+    }
+
+    private String getDefaultShortcut(String action) {
+        switch (action) {
+            case "Help":
+                return "Ctrl+.";
+            case "Submit":
+                return "Ctrl+Enter";
+            case "Generate PDF":
+                return "Ctrl+G";
+            case "Skip to Main Content":
+                return "Alt+M";
+            default:
+                return "Ctrl+.";
+        }
+    }
+
+    private void updateAllShortcuts() {
+        // Example: update menu item accelerators and global key listeners
+        // Help
+        KeyStroke helpStroke = parseKeyStroke(getShortcutPref("Help"));
+        if (helpStroke != null) {
+            // You may need to store a reference to your helpMenuItem
+            // helpMenuItem.setAccelerator(helpStroke);
+        }
+        // Submit
+        KeyStroke submitStroke = parseKeyStroke(getShortcutPref("Submit"));
+        // Generate PDF
+        KeyStroke pdfStroke = parseKeyStroke(getShortcutPref("Generate PDF"));
+        // Skip to Main Content
+        KeyStroke skipStroke = parseKeyStroke(
+            getShortcutPref("Skip to Main Content")
+        );
+        // You can update KeyboardFocusManager or register actions as needed
+        // For brevity, only the structure is shown here
+    }
+
+    private KeyStroke parseKeyStroke(String shortcut) {
+        if (shortcut == null) return null;
+        shortcut = shortcut.replace("Ctrl", "control").replace("Alt", "alt");
+        return KeyStroke.getKeyStroke(shortcut.replace("+", " "));
+    }
+
+    /**
+     * Sets the global UI font type for all components.
+     * @param typeName The type label ("Sans-serif", "Serif", "Monospace").
+     */
+    private void setUIFontType(String typeName) {
+        // No-op: font type selection removed
+    }
+
+    /**
+     * Helper to get the current global font.
+     */
+    private Font getCurrentUIFont() {
+        Font font = UIManager.getFont("Label.font");
+        return font != null ? font : new Font("SansSerif", Font.PLAIN, 14);
+    }
+
+    /**
+     * Helper to set the global font for all UI components.
+     */
+    private void setGlobalUIFont(FontUIResource fontRes) {
+        for (Object key : UIManager.getLookAndFeelDefaults().keySet()) {
+            if (key != null && key.toString().toLowerCase().contains("font")) {
+                UIManager.put(key, fontRes);
+            }
+        }
+        SwingUtilities.updateComponentTreeUI(this);
+    }
+
+    // Persistence for font preferences
+    /**
+     * User's preferred font size for the UI.
+     */
+    private String fontSizePref = "Default";
+    /**
+     * User's preferred font type for the UI.
+     */
+    private String fontTypePref = "Sans-serif";
+
+    private void saveFontPreferences() {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        prefs.put("fontSizePref", fontSizePref);
+        prefs.put("fontTypePref", fontTypePref);
+    }
+
+    private void loadFontPreferences() {
+        // No-op: font preferences removed
+    }
+
+    /**
+     * Adds a label and a field component to the specified panel.
+     *
+     * @param panel   the panel to add the label and field to
+     * @param labelText the text for the label
+
+
+    // Localization helper
+    private String getString(String key) {
+        try {
+            return bundle.getString(key);
+        } catch (MissingResourceException e) {
+            return key;
+        }
+    }
+
+    /**
+     * Sets the application's language and updates UI text.
+     * @param locale The locale to set.
+     */
+    private void setLanguage(Locale locale) {
+        bundle = ResourceBundle.getBundle("messages", locale);
+        saveLanguagePreference(locale);
+        updateAllLocalizedText();
+        announceToScreenReader(getString("language_changed"));
+    }
+
+    /**
+     * Saves the selected language preference.
+     * @param locale The locale to save.
+     */
+    private void saveLanguagePreference(Locale locale) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        prefs.put("language", locale.toLanguageTag());
+    }
+
+    /**
+     * Loads the persisted language preference and applies it.
+     */
+    private void loadLanguagePreference() {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        String langTag = prefs.get(
+            "language",
+            Locale.getDefault().toLanguageTag()
+        );
+        setLanguage(Locale.forLanguageTag(langTag));
+    }
+
+    // Update all UI text to localized strings (stub for now)
+    private void updateAllLocalizedText() {
+        // Example: update menu labels, error labels, etc.
+        accessibilityMenu.setText(getString("accessibility_menu"));
+        themeMenu.setText(getString("themes_menu"));
+        keyboardShortcutsMenuItem.setText(getString("keyboard_shortcuts_menu"));
+        skipToMainContentItem.setText(getString("skip_to_main"));
+        // Zoom menu items removed
+        // Update error labels if visible
+        if (dateErrorLabel.isVisible()) dateErrorLabel.setText(
+            getString("date_error")
+        );
+        if (studentErrorLabel.isVisible()) studentErrorLabel.setText(
+            getString("student_error")
+        );
+        if (schoolErrorLabel.isVisible()) schoolErrorLabel.setText(
+            getString("school_error")
+        );
+        if (projectErrorLabel.isVisible()) projectErrorLabel.setText(
+            getString("project_error")
+        );
+        if (timeErrorLabel.isVisible()) timeErrorLabel.setText(
+            getString("time_error")
+        );
+        if (teacherErrorLabel.isVisible()) teacherErrorLabel.setText(
+            getString("teacher_error")
+        );
+        if (tviErrorLabel.isVisible()) tviErrorLabel.setText(
+            getString("tvi_error")
+        );
+        if (subjectErrorLabel.isVisible()) subjectErrorLabel.setText(
+            getString("subject_error")
+        );
+        if (notesErrorLabel.isVisible()) notesErrorLabel.setText(
+            getString("notes_error")
+        );
+        // You can expand this to update all UI text as needed
+    }
+
+    /**
+     * Setup error labels for validation feedback.
+     */
+    private void setupErrorLabels() {
+        Color errorColor = Color.RED;
+        dateErrorLabel.setForeground(errorColor);
+        studentErrorLabel.setForeground(errorColor);
+        schoolErrorLabel.setForeground(errorColor);
+        projectErrorLabel.setForeground(errorColor);
+        timeErrorLabel.setForeground(errorColor);
+        teacherErrorLabel.setForeground(errorColor);
+        tviErrorLabel.setForeground(errorColor);
+        subjectErrorLabel.setForeground(errorColor);
+        notesErrorLabel.setForeground(errorColor);
+
+        dateErrorLabel.setVisible(false);
+        studentErrorLabel.setVisible(false);
+        schoolErrorLabel.setVisible(false);
+        projectErrorLabel.setVisible(false);
+        timeErrorLabel.setVisible(false);
+        teacherErrorLabel.setVisible(false);
+        tviErrorLabel.setVisible(false);
+        subjectErrorLabel.setVisible(false);
+        notesErrorLabel.setVisible(false);
+
+        dateErrorLabel.getAccessibleContext().setAccessibleName("Date Error");
+        studentErrorLabel
+            .getAccessibleContext()
+            .setAccessibleName("Student Error");
+        schoolErrorLabel
+            .getAccessibleContext()
+            .setAccessibleName("School Error");
+        projectErrorLabel
+            .getAccessibleContext()
+            .setAccessibleName("Project Error");
+        timeErrorLabel.getAccessibleContext().setAccessibleName("Time Error");
+        teacherErrorLabel
+            .getAccessibleContext()
+            .setAccessibleName("Teacher Error");
+        tviErrorLabel.getAccessibleContext().setAccessibleName("TVI Error");
+        subjectErrorLabel
+            .getAccessibleContext()
+            .setAccessibleName("Subject Error");
+        notesErrorLabel.getAccessibleContext().setAccessibleName("Notes Error");
+
+        // Add error labels to panels (after fields)
+        ProjectSetup.add(dateErrorLabel);
+        ProjectSetup.add(studentErrorLabel);
+        ProjectSetup.add(schoolErrorLabel);
+        ProjectSetup.add(projectErrorLabel);
+        ProjectSetup.add(timeErrorLabel);
+        ProjectSetup.add(teacherErrorLabel);
+        ProjectSetup.add(tviErrorLabel);
+        ProjectSetup.add(subjectErrorLabel);
+        ProjectSetup.add(notesErrorLabel);
     }
 
     /**
@@ -587,13 +1929,18 @@ public class LedgerGUI extends JFrame {
             );
         }
         label.setLabelFor(field);
+        label.setFocusable(false);
+        field.setFocusable(true);
+        field
+            .getAccessibleContext()
+            .setAccessibleName(labelText.replaceAll("<[^>]*>", ""));
+        field
+            .getAccessibleContext()
+            .setAccessibleDescription(
+                "Enter " + labelText.replaceAll("<[^>]*>", "").toLowerCase()
+            );
         panel.add(label, BorderLayout.WEST);
         panel.add(field, BorderLayout.EAST);
-        if (field.getAccessibleContext() != null) {
-            field
-                .getAccessibleContext()
-                .setAccessibleDescription("Enter " + labelText.toLowerCase());
-        }
     }
 
     /**
@@ -612,36 +1959,87 @@ public class LedgerGUI extends JFrame {
     private String[] loadOptionsFromFile(String fileName, String key) {
         List<String> options = new ArrayList<>();
         try (
-            BufferedReader reader = new BufferedReader(new FileReader(fileName))
-        ) {
-            System.out.println(
-                "Attempting to load options from file: " + fileName
+            BufferedReader reader = new BufferedReader(
+                new FileReader(fileName)
             );
+        ) {
+            logger.info("Attempting to load options from file: {}", fileName);
             StringBuilder jsonContent = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 jsonContent.append(line);
             }
-            System.out.println(
-                "File content loaded: " + jsonContent.toString()
-            );
+            logger.debug("File content loaded: {}", jsonContent.toString());
             JSONObject jsonObject = new JSONObject(jsonContent.toString());
             JSONArray jsonArray = jsonObject.getJSONArray(key);
-            System.out.println("Extracting options using key: " + key);
+            logger.debug("Extracting options using key: {}", key);
             for (int i = 0; i < jsonArray.length(); i++) {
                 options.add(jsonArray.getString(i));
             }
-            System.out.println("Options loaded successfully: " + options);
+            logger.info("Options loaded successfully: {}", options);
         } catch (IOException | JSONException e) {
             JOptionPane.showMessageDialog(
                 this,
                 "Error loading options from file: " + fileName
             );
-            System.err.println(
-                "Exception occurred while loading options: " + e.getMessage()
+            logger.error(
+                "Exception occurred while loading options: {}",
+                e.getMessage()
             );
         }
         return options.toArray(new String[0]);
+    }
+
+    // --- Localization support ---
+    // getString(String key) already defined, remove duplicate
+
+    private void setLanguage(String langCode) {
+        Locale locale = langCode.equals("es")
+            ? new Locale("es")
+            : Locale.ENGLISH;
+        labels = ResourceBundle.getBundle("messages", locale);
+        currentLocale = locale;
+        updateAllLabels();
+        logger.info("Language switched to {}", langCode);
+    }
+
+    private void updateAllLabels() {
+        // Example: update tab titles and field labels
+        if (mainTabs != null) {
+            mainTabs.setTitleAt(0, getString("app_title"));
+            // Add other tab titles as needed
+        }
+        if (studentLabel != null) studentLabel.setText(
+            getString("student_label")
+        );
+        if (schoolLabel != null) schoolLabel.setText(getString("school_label"));
+        if (projectLabel != null) projectLabel.setText(
+            getString("project_label")
+        );
+        if (timeLabel != null) timeLabel.setText(getString("time_label"));
+        if (teacherLabel != null) teacherLabel.setText(
+            getString("teacher_label")
+        );
+        if (tviLabel != null) tviLabel.setText(getString("tvi_label"));
+        if (subjectLabel != null) subjectLabel.setText(
+            getString("subject_label")
+        );
+        if (notesLabel != null) notesLabel.setText(getString("notes_label"));
+        if (submitButton != null) submitButton.setText(
+            getString("button.submit")
+        );
+        // Add other label/button/tab updates as needed
+    }
+
+    /**
+     * Loads project types from project_type.json for Project Setup tab.
+     * @return An array of project types.
+     */
+    private String[] getProjectTypesFromJson() {
+        return loadOptionsFromFile(
+            "json_files/project_type.json",
+            "project_types"
+        );
     }
 
     private void loadStartupOptions() {
@@ -675,26 +2073,16 @@ public class LedgerGUI extends JFrame {
     /**
      * Shows a dialog for entering the date range and selecting the projects to generate a PDF report.
      */
-    /**
-     * Displays a dialog for selecting a date range to generate a report.
-     */
     private void showDateRangeDialog() {
         JTextField startDateField = new JTextField(getPreviousMonth16th(), 10);
         JTextField endDateField = new JTextField(getCurrentMonth15th(), 10);
         String[] studentOptions = loadOptionsFromFile(
-            "students.json",
+            "json_files/students.json",
             "students"
         );
         JComboBox studentMaterial = new JComboBox<>(studentOptions);
         // Create checkboxes for project options
-        String[] projectOptions = {
-            "UEB Literary Transcription",
-            "UEB Technical Transcription",
-            "Tactile Graphics Generation",
-            "Large Print Generation",
-            "3D Print Rendering",
-            "3D Print Production",
-        };
+        String[] projectOptions = getProjectNamesFromDatabase();
         JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
 
         JPanel panel = new JPanel(new GridBagLayout());
@@ -790,6 +2178,17 @@ public class LedgerGUI extends JFrame {
      * @param args Command-line arguments passed to the application.
      */
     public static void main(String[] args) {
+        // Parse log level from command-line arguments
+        String logLevelStr = "WARN"; // Default to WARN
+        for (String arg : args) {
+            if (arg.startsWith("--loglevel=")) {
+                logLevelStr = arg
+                    .substring("--loglevel=".length())
+                    .toUpperCase();
+            }
+        }
+        System.setProperty("LOG_LEVEL", logLevelStr);
+
         // Set the look and feel to the system look and feel
         String defaultTheme = "Cyan Light"; // or any other theme name from the map
         try {
@@ -815,7 +2214,8 @@ public class LedgerGUI extends JFrame {
         ) {}
 
         SwingUtilities.invokeLater(() -> {
-            new LedgerGUI().setVisible(true);
+            LedgerGUI gui = new LedgerGUI();
+            gui.setVisible(true);
         });
     }
 
@@ -824,11 +2224,7 @@ public class LedgerGUI extends JFrame {
      *
      * @param themeName the name of the theme to set
      */
-    /**
-     * Sets the IntelliJ IDEA-inspired theme for the application.
-     *
-     * @param themeName The name of the theme to apply.
-     */
+
     private void setIntelliJTheme(String themeName) {
         try {
             Class<? extends LookAndFeel> themeClass = INTELLIJ_THEMES.get(
@@ -869,7 +2265,7 @@ public class LedgerGUI extends JFrame {
         loadDataFromFiles();
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
-            Statement stmt = conn.createStatement()
+            Statement stmt = conn.createStatement();
         ) {
             // Database initialization logic here
         } catch (SQLException e) {
@@ -886,14 +2282,26 @@ public class LedgerGUI extends JFrame {
      * @return An array of project names.
      */
     private String[] getProjects() {
-        return new String[] {
-            "UEB Literary Transcription",
-            "UEB Technical Transcription",
-            "Tactile Graphics Generation",
-            "Large Print Generation",
-            "3D Print Rendering",
-            "3D Print Production",
-        };
+        return getProjectNamesFromDatabase();
+    }
+
+    // Fetch project names from the database for dropdowns/menus
+    private String[] getProjectNamesFromDatabase() {
+        List<String> names = new ArrayList<>();
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(
+                "SELECT name FROM Project_Name ORDER BY name"
+            );
+        ) {
+            while (rs.next()) {
+                names.add(rs.getString("name"));
+            }
+        } catch (SQLException e) {
+            logger.error("Error fetching project names: {}", e.getMessage());
+        }
+        return names.toArray(new String[0]);
     }
 
     /**
@@ -902,30 +2310,46 @@ public class LedgerGUI extends JFrame {
     /**
      * Loads data from external files into the application.
      */
+
+    /**
+     * Fetches all project names from the database for use in the PDF dialog.
+     * @return An array of project names.
+     */
+    // Removed broken getProjectNamesFromDatabase method
+
     private void loadDataFromFiles() {
         try {
             String[] students = loadOptionsFromFile(
-                "students.json",
+                "json_files/students.json",
                 "students"
             );
             studentField.setModel(new DefaultComboBoxModel<>(students));
 
             String[] teachers = loadOptionsFromFile(
-                "teachers.json",
+                "json_files/teachers.json",
                 "teachers"
             );
             teacherField.setListData(teachers);
 
-            String[] tvis = loadOptionsFromFile("tvis.json", "tvis");
+            String[] leas = loadOptionsFromFile(
+                "json_files/LEAs.json",
+                "teachers"
+            );
+            leaField.setModel(new DefaultComboBoxModel<>(leas));
+
+            String[] tvis = loadOptionsFromFile("json_files/tvis.json", "tvis");
             tviField.setListData(tvis);
 
             String[] subjects = loadOptionsFromFile(
-                "subjects.json",
+                "json_files/subjects.json",
                 "subjects"
             );
             subjectField.setModel(new DefaultComboBoxModel<>(subjects));
 
-            String[] schools = loadOptionsFromFile("schools.json", "schools");
+            String[] schools = loadOptionsFromFile(
+                "json_files/schools.json",
+                "schools"
+            );
             schoolField.setModel(new DefaultComboBoxModel<>(schools));
         } catch (Exception e) {
             JOptionPane.showMessageDialog(
@@ -936,7 +2360,35 @@ public class LedgerGUI extends JFrame {
     }
 
     private String[] getProjectNames() {
-        return new String[] { "Project A", "Project B", "Project C" };
+        List<String> projectNames = new ArrayList<>();
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(
+                "SELECT name FROM Project_Name ORDER BY name"
+            );
+        ) {
+            while (rs.next()) {
+                projectNames.add(rs.getString("name"));
+            }
+        } catch (SQLException e) {
+            logger.error("Error fetching project names: {}", e.getMessage());
+            // Return empty array if database query fails
+            return new String[0];
+        }
+        return projectNames.toArray(new String[0]);
+    }
+
+    /**
+     * Refreshes the project names combo box with current database values.
+     */
+    private void refreshProjectNames() {
+        String[] projectNames = getProjectNames();
+        projectNameField.removeAllItems();
+        for (String name : projectNames) {
+            projectNameField.addItem(name);
+        }
+        // No need to refresh ProjectSetup input, it's a JTextField now
     }
 
     private int getProjectId(String projectName) {
@@ -944,7 +2396,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT project_name_id FROM Project_Name WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, projectName);
             ResultSet rs = pstmt.executeQuery();
@@ -952,7 +2404,7 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("project_name_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching project ID: " + e.getMessage());
+            logger.error("Error getting TVI ID: " + e.getMessage());
         }
         return -1; // Return -1 if not found
     }
@@ -962,7 +2414,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT student_id FROM Students WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, studentName);
             ResultSet rs = pstmt.executeQuery();
@@ -970,7 +2422,7 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("student_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching student ID: " + e.getMessage());
+            logger.error("Error fetching project ID: {}", e.getMessage());
         }
         return -1; // Return -1 if not found
     }
@@ -980,7 +2432,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT teacher_id FROM Teachers WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, teacherName);
             ResultSet rs = pstmt.executeQuery();
@@ -988,7 +2440,7 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("teacher_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching teacher ID: " + e.getMessage());
+            logger.error("Error fetching student ID: {}", e.getMessage());
         }
         return -1; // Return -1 if not found
     }
@@ -998,7 +2450,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT school_id FROM Schools WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, schoolName);
             ResultSet rs = pstmt.executeQuery();
@@ -1006,7 +2458,7 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("school_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching school ID: " + e.getMessage());
+            logger.error("Error fetching teacher ID: {}", e.getMessage());
         }
         return -1; // Return -1 if not found
     }
@@ -1016,7 +2468,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT subject_id FROM Subjects WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, subjectName);
             ResultSet rs = pstmt.executeQuery();
@@ -1024,7 +2476,7 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("subject_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching subject ID: " + e.getMessage());
+            logger.error("Error fetching school ID: {}", e.getMessage());
         }
         return -1; // Return -1 if not found
     }
@@ -1034,7 +2486,7 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
                 "SELECT tvi_id FROM TVIs WHERE name = ?"
-            )
+            );
         ) {
             pstmt.setString(1, tviName);
             ResultSet rs = pstmt.executeQuery();
@@ -1042,9 +2494,27 @@ public class LedgerGUI extends JFrame {
                 return rs.getInt("tvi_id");
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching TVI ID: " + e.getMessage());
+            logger.error("Error fetching subject ID: {}", e.getMessage());
         }
-        return -1; // Return -1 if not found
+        return -1;
+    }
+
+    private int getLeaId(String leaName) {
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT lea_id FROM LEAs WHERE name = ?"
+            );
+        ) {
+            pstmt.setString(1, leaName);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("lea_id");
+            }
+        } catch (SQLException e) {
+            logger.error("Error getting LEA ID: {}", e.getMessage());
+        }
+        return -1;
     }
 
     private String cleanInput(String input) {
@@ -1057,27 +2527,42 @@ public class LedgerGUI extends JFrame {
         PdfWriter writer,
         HeaderFooterPageEvent event
     ) {
-        // Stub implementation
-        return new Object[] { new PdfPTable(1), 0.0 };
+        try {
+            return createTable(data, document, writer, event);
+        } catch (DocumentException e) {
+            // Return an empty table and zero if there's an error
+            return new Object[] { new PdfPTable(6), 0.0 };
+        }
     }
 
     private void initializeDatabaseTables() {
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
-            Statement stmt = conn.createStatement()
+            Statement stmt = conn.createStatement();
         ) {
             String sqlProjectTracking =
                 "CREATE TABLE IF NOT EXISTS Project_Tracking (" +
                 "tracking_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "project_name TEXT NOT NULL, " +
-                "element TEXT NOT NULL, " +
-                "time TEXT NOT NULL, " +
-                "date TEXT NOT NULL)";
+                "detail_id INTEGER NOT NULL, " +
+                "project_name_id INTEGER NOT NULL, " +
+                "student_id INTEGER NOT NULL, " +
+                "updated TEXT, " +
+                "completed TEXT, " +
+                "notes TEXT, " +
+                "complete BOOLEAN, " +
+                "proof_status TEXT, " +
+                "element TEXT, " +
+                "time INTEGER, " +
+                "FOREIGN KEY (detail_id) REFERENCES Project_Details(detail_id), " +
+                "FOREIGN KEY (project_name_id) REFERENCES Project_Name(project_name_id), " +
+                "FOREIGN KEY (student_id) REFERENCES Students(student_id)" +
+                ")";
             try {
                 stmt.execute(sqlProjectTracking);
             } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Project_Tracking table: " + e.getMessage()
+                logger.error(
+                    "Error creating Project_Tracking table: {}",
+                    e.getMessage()
                 );
             }
             stmt.execute("PRAGMA foreign_keys = ON;");
@@ -1089,8 +2574,9 @@ public class LedgerGUI extends JFrame {
             try {
                 stmt.execute(sqlProjectName);
             } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Project_Name table: " + e.getMessage()
+                logger.error(
+                    "Error creating Project_Name table: {}",
+                    e.getMessage()
                 );
             }
             String sqlSchools =
@@ -1100,8 +2586,9 @@ public class LedgerGUI extends JFrame {
             try {
                 stmt.execute(sqlSchools);
             } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Schools table: " + e.getMessage()
+                logger.error(
+                    "Error creating Schools table: {}",
+                    e.getMessage()
                 );
             }
             String sqlTeachers =
@@ -1114,8 +2601,9 @@ public class LedgerGUI extends JFrame {
             try {
                 stmt.execute(sqlTeachers);
             } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Teachers table: " + e.getMessage()
+                logger.error(
+                    "Error creating Teachers table: {}",
+                    e.getMessage()
                 );
             }
             String sqlSubjects =
@@ -1129,10 +2617,26 @@ public class LedgerGUI extends JFrame {
             try {
                 stmt.execute(sqlSubjects);
             } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Subjects table: " + e.getMessage()
+                logger.error(
+                    "Error creating Subjects table: {}",
+                    e.getMessage()
                 );
             }
+            // Restore missing table definitions
+
+            String sqlLEAs =
+                "CREATE TABLE IF NOT EXISTS LEAs (" +
+                "lea_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL UNIQUE" +
+                ")";
+            try {
+                stmt.execute(sqlLEAs);
+            } catch (SQLException e) {
+                System.err.println(
+                    "Error creating LEAs table: " + e.getMessage()
+                );
+            }
+
             String sqlTVIs =
                 "CREATE TABLE IF NOT EXISTS TVIs (" +
                 "tvi_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -1147,13 +2651,17 @@ public class LedgerGUI extends JFrame {
                     "Error creating TVIs table: " + e.getMessage()
                 );
             }
+
             String sqlStudents =
                 "CREATE TABLE IF NOT EXISTS Students (" +
                 "student_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "email TEXT, " +
                 "school_id INTEGER NOT NULL, " +
-                "FOREIGN KEY (school_id) REFERENCES Schools(school_id) ON DELETE SET NULL)";
+                "lea_id INTEGER, " +
+                "FOREIGN KEY (school_id) REFERENCES Schools(school_id) ON DELETE SET NULL, " +
+                "FOREIGN KEY (lea_id) REFERENCES LEAs(lea_id) ON DELETE SET NULL" +
+                ")";
             try {
                 stmt.execute(sqlStudents);
             } catch (SQLException e) {
@@ -1161,32 +2669,7 @@ public class LedgerGUI extends JFrame {
                     "Error creating Students table: " + e.getMessage()
                 );
             }
-            String sqlStudentTeachers =
-                "CREATE TABLE IF NOT EXISTS Student_Teachers (" +
-                "student_id INTEGER NOT NULL, " +
-                "teacher_id INTEGER NOT NULL, " +
-                "FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE, " +
-                "FOREIGN KEY (teacher_id) REFERENCES Teachers(teacher_id) ON DELETE CASCADE)";
-            try {
-                stmt.execute(sqlStudentTeachers);
-            } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Student_Teachers table: " + e.getMessage()
-                );
-            }
-            String sqlStudentTVIs =
-                "CREATE TABLE IF NOT EXISTS Student_TVIs (" +
-                "student_id INTEGER NOT NULL, " +
-                "tvi_id INTEGER NOT NULL, " +
-                "FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE, " +
-                "FOREIGN KEY (tvi_id) REFERENCES TVIs(tvi_id) ON DELETE CASCADE)";
-            try {
-                stmt.execute(sqlStudentTVIs);
-            } catch (SQLException e) {
-                System.err.println(
-                    "Error creating Student_TVIs table: " + e.getMessage()
-                );
-            }
+
             String sqlMediaTypes =
                 "CREATE TABLE IF NOT EXISTS Media_Types (" +
                 "media_type_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -1201,52 +2684,29 @@ public class LedgerGUI extends JFrame {
                 );
             }
 
-            String sqlSourceFile =
-                "CREATE TABLE IF NOT EXISTS SourceFile (" +
-                "source_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "file_path TEXT NOT NULL)";
-            try {
-                stmt.execute(sqlSourceFile);
-            } catch (SQLException e) {
-                System.err.println(
-                    "Error creating SourceFile table: " + e.getMessage()
-                );
-            }
-
-            String sqlTargetFile =
-                "CREATE TABLE IF NOT EXISTS TargetFile (" +
-                "target_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "file_type TEXT NOT NULL, " +
-                "file_path TEXT NOT NULL)";
-            try {
-                stmt.execute(sqlTargetFile);
-            } catch (SQLException e) {
-                System.err.println(
-                    "Error creating TargetFile table: " + e.getMessage()
-                );
-            }
             String sqlProjectDetails =
                 "CREATE TABLE IF NOT EXISTS Project_Details (" +
                 "detail_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "project_name_id INTEGER, " +
-                "student_id INTEGER, " +
+                "project_name_id INTEGER NOT NULL, " +
+                "student_id INTEGER NOT NULL, " +
                 "teacher_id INTEGER, " +
-                "subject_id INTEGER, " +
-                "school_id INTEGER, " +
-                "minutes_spent INTEGER DEFAULT 0, " +
-                "proof_status TEXT CHECK(proof_status IN ('no', 'in progress', 'revising', 'done')), " +
-                "complete BOOLEAN DEFAULT 0, " +
-                "delivered BOOLEAN DEFAULT 0, " +
-                "delivery_mode TEXT CHECK(delivery_mode IN ('email', 'pick up', 'drop off')), " +
-                "subject TEXT CHECK(subject IN ('art', 'history', 'math', 'ela', 'creative writing', 'coding', 'computer science', 'health', 'social studies', 'music')), " +
-                "time TEXT NOT NULL, " +
+                "subject_id INTEGER NOT NULL, " +
+                "school_id INTEGER NOT NULL, " +
+                "minutes_spent INTEGER, " +
+                "proof_status TEXT, " +
+                "complete BOOLEAN, " +
+                "delivered BOOLEAN, " +
+                "delivery_mode TEXT, " +
+                "subject TEXT, " +
+                "time TEXT, " +
                 "date TEXT NOT NULL, " +
                 "notes TEXT, " +
                 "FOREIGN KEY (project_name_id) REFERENCES Project_Name(project_name_id) ON DELETE CASCADE, " +
                 "FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE SET NULL, " +
                 "FOREIGN KEY (teacher_id) REFERENCES Teachers(teacher_id) ON DELETE SET NULL, " +
                 "FOREIGN KEY (subject_id) REFERENCES Subjects(subject_id) ON DELETE SET NULL, " +
-                "FOREIGN KEY (school_id) REFERENCES Schools(school_id) ON DELETE SET NULL)";
+                "FOREIGN KEY (school_id) REFERENCES Schools(school_id) ON DELETE SET NULL" +
+                ")";
             try {
                 stmt.execute(sqlProjectDetails);
             } catch (SQLException e) {
@@ -1254,12 +2714,49 @@ public class LedgerGUI extends JFrame {
                     "Error creating Project_Details table: " + e.getMessage()
                 );
             }
+
+            String sqlStudentTeachers =
+                "CREATE TABLE IF NOT EXISTS Student_Teachers (" +
+                "student_id INTEGER NOT NULL, " +
+                "teacher_id INTEGER NOT NULL, " +
+                "FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE, " +
+                "FOREIGN KEY (teacher_id) REFERENCES Teachers(teacher_id) ON DELETE CASCADE" +
+                ")";
+            try {
+                stmt.execute(sqlStudentTeachers);
+            } catch (SQLException e) {
+                System.err.println(
+                    "Error creating Student_Teachers table: " + e.getMessage()
+                );
+            }
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(
-                this,
-                "Error initializing database: " + e.getMessage()
+            System.err.println(
+                "Error initializing database tables: " + e.getMessage()
             );
         }
+    }
+
+    // End of initializeDatabaseTables method
+
+    /**
+     * Checks if a project name exists in the Project_Name table.
+     */
+    private boolean projectNameExists(String name) {
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT COUNT(*) FROM Project_Name WHERE name = ?"
+            );
+        ) {
+            pstmt.setString(1, name);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            // Ignore, treat as not existing
+        }
+        return false;
     }
 
     /**
@@ -1269,6 +2766,10 @@ public class LedgerGUI extends JFrame {
      * Loads data from the database into the application.
      */
     private JPanel ProjectTracking;
+    /**
+     * Panel for project setup UI components.
+     */
+    private JPanel ProjectSetup;
 
     private void loadDataFromDatabase() {
         tableModel.setRowCount(0);
@@ -1276,31 +2777,33 @@ public class LedgerGUI extends JFrame {
             Connection conn = DriverManager.getConnection(DB_URL);
             Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery(
-                "SELECT pd.date, s.name AS student, sub.name AS subject, sch.name AS school, pn.name AS project, t.name AS teacher, pd.time " +
-                "FROM Project_Details pd " +
-                "LEFT JOIN Students s ON pd.student_id = s.student_id " +
-                "LEFT JOIN Subjects sub ON pd.subject_id = sub.subject_id " +
-                "LEFT JOIN Schools sch ON pd.school_id = sch.school_id " +
-                "LEFT JOIN Project_Name pn ON pd.project_name_id = pn.project_name_id " +
-                "LEFT JOIN Teachers t ON pd.teacher_id = t.teacher_id"
-            )
+                "SELECT pn.name AS project_name, " +
+                "MAX(pt.updated) AS latest_date, " +
+                "s.name AS student, " +
+                "sub.name AS subject, " +
+                "sch.name AS school, " +
+                "SUM(pt.time) AS total_time " +
+                "FROM Project_Tracking pt " +
+                "JOIN Project_Details pd ON pt.detail_id = pd.detail_id " +
+                "JOIN Project_Name pn ON pd.project_name_id = pn.project_name_id " +
+                "JOIN Students s ON pd.student_id = s.student_id " +
+                "JOIN Subjects sub ON pd.subject_id = sub.subject_id " +
+                "JOIN Schools sch ON pd.school_id = sch.school_id " +
+                "GROUP BY pn.name, s.name, sub.name, sch.name"
+            );
         ) {
             while (rs.next()) {
                 Object[] row = {
-                    rs.getString("date"),
-                    rs.getString("student"),
-                    rs.getString("subject"),
-                    rs.getString("school"),
-                    rs.getString("project"),
-                    rs.getString("time"),
+                    rs.getString("latest_date"), // Date
+                    rs.getString("student"), // Student
+                    rs.getString("subject"), // Subject
+                    rs.getString("school"), // School
+                    rs.getString("project_name"), // Project
+                    rs.getInt("total_time"), // Time
                 };
                 tableModel.addRow(row);
             }
         } catch (SQLException e) {
-            System.err.println(
-                "Error executing query: SELECT date, student, subject, school, project, time FROM Project_Details"
-            );
-            System.err.println("SQL Error: " + e.getMessage());
             JOptionPane.showMessageDialog(
                 this,
                 "Error loading data: " + e.getMessage()
@@ -1316,35 +2819,181 @@ public class LedgerGUI extends JFrame {
      * Adds tracking information to the database.
      */
     private void addTrackingInfo() {
-        String projectName = projectNameField.getSelectedItem().toString();
-        String projectElement = projectElementField
-            .getSelectedItem()
-            .toString();
+        // Project Status fields only
+        String projectName = projectNameField.getSelectedItem() != null
+            ? projectNameField.getSelectedItem().toString()
+            : "";
+        String projectElement = projectElementField.getSelectedItem() != null
+            ? projectElementField.getSelectedItem().toString()
+            : "";
         String projectTime = projectTimeField.getText();
         String notes = notesField.getText();
-        String currentDate = LocalDate.now().toString();
+        String updated = updatedField.getText();
+        boolean complete = completeComboBox
+            .getSelectedItem()
+            .toString()
+            .equals("Yes");
+        String proofStatus = proofStatusField.getSelectedItem() != null
+            ? proofStatusField.getSelectedItem().toString()
+            : "";
+        String completed = "";
+        if (
+            completedField != null && completedField.getSelectedItem() != null
+        ) {
+            completed = completedField.getSelectedItem().toString();
+        }
+        // Declare and initialize student, schoolId, leaId for tracking
+        String student = (studentField.getSelectedItem() != null)
+            ? studentField.getSelectedItem().toString()
+            : "";
+        String school = (schoolField.getSelectedItem() != null)
+            ? schoolField.getSelectedItem().toString()
+            : "";
+        String lea = (leaField.getSelectedItem() != null)
+            ? leaField.getSelectedItem().toString()
+            : "";
+        int schoolId = getOrInsertSchoolId(school);
+        int leaId = getOrInsertLeaId(lea);
+        logger.info("Submit pressed: projectName='{}'", projectName);
+        int projectNameId = getOrInsertProjectNameId(projectName, updated);
+        logger.info("Resolved projectNameId={}", projectNameId);
+        int studentId = getOrInsertStudentId(student, schoolId, leaId);
+
+        if (projectName == null || projectName.trim().isEmpty()) {
+            logger.error(
+                "Project name is empty or null. Cannot proceed with insert."
+            );
+            showLogWindow(
+                "Error",
+                "Project name is required and cannot be empty."
+            );
+            return;
+        }
+        if (projectNameId <= 0) {
+            logger.error(
+                "Project name ID could not be found or created for '{}'.",
+                projectName
+            );
+            showLogWindow(
+                "Error",
+                "Project name ID could not be found or created. Please check the project name."
+            );
+            return;
+        }
+
+        StringBuilder errorLog = new StringBuilder();
+        boolean hasError = false;
+
+        if (projectName.isEmpty()) {
+            errorLog.append("Project Name is required.\n");
+            hasError = true;
+        }
+        if (projectElement.isEmpty()) {
+            errorLog.append("Project Element is required.\n");
+            hasError = true;
+        }
+        if (projectTime == null || projectTime.isEmpty()) {
+            errorLog.append("Project Time is required.\n");
+            hasError = true;
+        }
+        if (notes.length() > 500) {
+            errorLog.append("Notes must be less than 500 characters.\n");
+            hasError = true;
+        }
+
+        if (hasError) {
+            showLogWindow("Tracking Info Error", errorLog.toString());
+            return;
+        }
+
+        StringBuilder confirmationLog = new StringBuilder();
+        confirmationLog.append("Saved Project Status Tracking Info:\n");
+        confirmationLog
+            .append("Project Name: ")
+            .append(projectName)
+            .append("\n");
+        confirmationLog.append("Element: ").append(projectElement).append("\n");
+        confirmationLog.append("Time: ").append(projectTime).append("\n");
+        confirmationLog.append("Notes: ").append(notes).append("\n");
+        confirmationLog.append("Updated: ").append(updated).append("\n");
+        confirmationLog
+            .append("Complete: ")
+            .append(complete ? "Yes" : "No")
+            .append("\n");
+        confirmationLog
+            .append("Proof Status: ")
+            .append(proofStatus)
+            .append("\n");
+
+        // Find detail_id for the selected project name
+        int detailId = -1;
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement findDetailStmt = conn.prepareStatement(
+                "SELECT pd.detail_id FROM Project_Details pd JOIN Project_Name pn ON pd.project_name_id = pn.project_name_id WHERE pn.name = ?"
+            );
+        ) {
+            findDetailStmt.setString(1, projectName);
+            ResultSet rs = findDetailStmt.executeQuery();
+            if (rs.next()) {
+                detailId = rs.getInt("detail_id");
+            }
+        } catch (SQLException e) {
+            showLogWindow("Error finding project detail_id", e.getMessage());
+            return;
+        }
+
+        if (detailId == -1) {
+            showLogWindow(
+                "Tracking Info Error",
+                "Could not find project detail_id for selected project name."
+            );
+            return;
+        }
 
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
-                "INSERT INTO Project_Tracking (project_name, element, time, notes, date) VALUES (?, ?, ?, ?, ?)"
-            )
+                "INSERT INTO Project_Tracking (detail_id, project_name_id, student_id, updated, completed, notes, complete, proof_status, element, time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
         ) {
-            pstmt.setString(1, projectName);
-            pstmt.setString(2, projectElement);
-            pstmt.setString(3, projectTime);
-            pstmt.setString(4, notes);
-            pstmt.setString(5, currentDate);
+            pstmt.setInt(1, detailId);
+            pstmt.setInt(2, projectNameId);
+            pstmt.setInt(3, studentId);
+            pstmt.setString(4, updated);
+            pstmt.setString(5, completed);
+            pstmt.setString(6, notes);
+            pstmt.setBoolean(7, complete);
+            pstmt.setString(8, proofStatus);
+            pstmt.setString(9, projectElement);
+            // Convert HH:MM to total minutes for DB storage
+            int minutes = 0;
+            if (projectTime != null && projectTime.contains(":")) {
+                String[] parts = projectTime.split(":");
+                try {
+                    minutes =
+                        Integer.parseInt(parts[0]) * 60 +
+                        Integer.parseInt(parts[1]);
+                } catch (NumberFormatException ex) {
+                    minutes = 0; // fallback to 0 if parsing fails
+                }
+            } else if (projectTime != null && !projectTime.isEmpty()) {
+                try {
+                    minutes = Integer.parseInt(projectTime);
+                } catch (NumberFormatException ex) {
+                    minutes = 0;
+                }
+            }
+            pstmt.setInt(10, minutes);
             pstmt.executeUpdate();
-            JOptionPane.showMessageDialog(
-                this,
-                "Tracking info added successfully."
+            showLogWindow(
+                "Tracking Info Confirmation",
+                "Project tracking info added successfully."
             );
+            // Refresh Projects tab table after adding tracking info
+            loadDataFromDatabase();
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(
-                this,
-                "Error adding tracking info: " + e.getMessage()
-            );
+            showLogWindow("Database Error", e.getMessage());
         }
     }
 
@@ -1389,84 +3038,294 @@ public class LedgerGUI extends JFrame {
      * Submits data entered in the application to the database.
      */
     private void submitData() {
-        String date = dateField.getText();
-        int schoolId = getSchoolId(schoolField.getSelectedItem().toString());
-        int studentId = getStudentId(studentField.getSelectedItem().toString());
-        String subject = subjectField.getSelectedItem().toString();
-        String notes = notesField.getText();
-        String projectName = projectNameField.getSelectedItem().toString();
-        int projectNameId = getProjectId(
-            projectField.getSelectedItem().toString()
-        );
-        String time = timeField.getText();
-        String updated = updatedField.getText();
-        boolean complete = completeCheckBox.isSelected();
-        int teacherId = getTeacherId(
-            teacherField.getSelectedValue().toString()
-        );
-        String tvi = tviField.getSelectedValue().toString();
-        String mediaType = mediaTypeField.getSelectedItem().toString();
-        int subjectId = getSubjectId(subject);
-        String proofStatus = proofStatusField.getSelectedItem().toString();
-        String deliveryMode = deliveryModeField.getSelectedItem().toString();
+        // Clear all error labels before validation
+        dateErrorLabel.setVisible(false);
+        studentErrorLabel.setVisible(false);
+        schoolErrorLabel.setVisible(false);
+        projectErrorLabel.setVisible(false);
+        timeErrorLabel.setVisible(false);
+        teacherErrorLabel.setVisible(false);
+        tviErrorLabel.setVisible(false);
+        subjectErrorLabel.setVisible(false);
+        notesErrorLabel.setVisible(false);
 
+        // Project Setup fields only
+        String date = dateField.getText();
+        String student = (studentField.getSelectedItem() != null)
+            ? studentField.getSelectedItem().toString()
+            : "";
+        String school = (schoolField.getSelectedItem() != null)
+            ? schoolField.getSelectedItem().toString()
+            : "";
+        String setupProjectName = setupProjectNameTextField.getText().trim();
+        String teacher = (teacherField.getSelectedValue() != null)
+            ? teacherField.getSelectedValue().toString()
+            : "";
+        String tvi = (tviField.getSelectedValue() != null)
+            ? tviField.getSelectedValue().toString()
+            : "";
+        String subject = (subjectField.getSelectedItem() != null)
+            ? subjectField.getSelectedItem().toString()
+            : "";
+        String notes = notesField.getText();
+        String updated = updatedField.getText();
+        boolean complete = completeComboBox
+            .getSelectedItem()
+            .toString()
+            .equals("Yes");
+        String lea = (leaField.getSelectedItem() != null)
+            ? leaField.getSelectedItem().toString()
+            : "";
+        String mediaType = mediaTypeField.getSelectedItem() != null
+            ? mediaTypeField.getSelectedItem().toString()
+            : "";
+        String proofStatus = proofStatusField.getSelectedItem() != null
+            ? proofStatusField.getSelectedItem().toString()
+            : "";
+        String deliveryMode = deliveryModeField.getSelectedItem() != null
+            ? deliveryModeField.getSelectedItem().toString()
+            : "";
+        String completed = completedField != null &&
+            completedField.getSelectedItem() != null
+            ? completedField.getSelectedItem().toString()
+            : "";
+
+        // Insert or get IDs for all related tables
+        int schoolId = getOrInsertSchoolId(school);
+        int leaId = getOrInsertLeaId(lea);
+        int teacherId = getOrInsertTeacherId(teacher, schoolId);
+        int tviId = getOrInsertTviId(tvi, schoolId);
+        int studentId = getOrInsertStudentId(student, schoolId, leaId);
+        int subjectId = getOrInsertSubjectId(subject, teacherId, schoolId);
+        int projectNameId = getOrInsertProjectNameId(setupProjectName, date);
+        int mediaTypeId = getOrInsertMediaTypeId(mediaType, projectNameId);
+
+        // Insert into Student_Teachers (many-to-many)
+        insertStudentTeacher(studentId, teacherId);
+
+        // Insert into Project_Details
+        int detailId = -1;
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
-                "INSERT INTO Project_Details (project_name_id, student_id, teacher_id, subject_id, school_id, time, date, notes, proof_status, complete, delivered, delivery_mode, subject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            )
+                "INSERT INTO Project_Details (project_name_id, student_id, teacher_id, subject_id, school_id, minutes_spent, proof_status, complete, delivered, delivery_mode, subject, time, date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
         ) {
             pstmt.setInt(1, projectNameId);
             pstmt.setInt(2, studentId);
             pstmt.setInt(3, teacherId);
             pstmt.setInt(4, subjectId);
             pstmt.setInt(5, schoolId);
-            pstmt.setString(6, time);
-            pstmt.setString(7, date);
-            pstmt.setString(8, notes);
-            pstmt.setString(9, proofStatus);
-            pstmt.setBoolean(10, complete);
-            pstmt.setBoolean(11, false); // Default delivered status
-            pstmt.setString(12, deliveryMode);
-            pstmt.setString(13, subject);
+            pstmt.setInt(6, 0); // minutes_spent default to 0
+            pstmt.setString(7, proofStatus);
+            pstmt.setBoolean(8, complete);
+            pstmt.setBoolean(9, false); // delivered default to false
+            pstmt.setString(10, deliveryMode);
+            pstmt.setString(11, subject); // subject default to empty string if not set
+            pstmt.setString(12, projectTimeField.getText()); // time as entered
+            pstmt.setString(13, date); // ensure date is set for NOT NULL column
+            pstmt.setString(14, notes);
             pstmt.executeUpdate();
 
-            // Insert into Student_Teachers (only if not already exists)
-            PreparedStatement teacherStmt = conn.prepareStatement(
-                "INSERT OR IGNORE INTO Student_Teachers (student_id, teacher_id) VALUES (?, ?)"
-            );
-            teacherStmt.setInt(1, studentId);
-            teacherStmt.setInt(2, teacherId);
-            teacherStmt.executeUpdate();
-
-            // Insert into Student_TVIs (only if not already exists)
-            if (tvi != null && !tvi.isEmpty()) {
-                PreparedStatement tviStmt = conn.prepareStatement(
-                    "INSERT OR IGNORE INTO Student_TVIs (student_id, tvi_id) VALUES (?, ?)"
-                );
-                tviStmt.setInt(1, studentId);
-                tviStmt.setInt(2, getTviId(tvi));
-                tviStmt.executeUpdate();
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                detailId = rs.getInt(1);
             }
-
-            // Insert into Media_Types
-            PreparedStatement mediaStmt = conn.prepareStatement(
-                "INSERT INTO Media_Types (type, project_name_id) VALUES (?, ?)"
-            );
-            mediaStmt.setString(1, mediaType);
-            mediaStmt.setInt(2, projectNameId);
-            mediaStmt.executeUpdate();
+            this.currentDetailId = detailId;
         } catch (SQLException | NumberFormatException e) {
-            JOptionPane.showMessageDialog(
-                this,
+            showLogWindow(
+                "Database Error",
                 "Error saving data: " + e.getMessage()
             );
+            announceToScreenReader("Error saving data: " + e.getMessage());
+            return;
+        }
+
+        // Removed Project_Tracking insert block: Project Details Submit should not write to Project_Tracking
+
+        loadDataFromDatabase();
+        refreshProjectNames(); // Refresh project names in case new ones were added
+
+        // Switch to Projects tab to show updated table
+        for (Component comp : getContentPane().getComponents()) {
+            if (comp instanceof JTabbedPane) {
+                ((JTabbedPane) comp).setSelectedIndex(2);
+                break;
+            }
+        }
+
+        boolean hasError = false;
+        StringBuilder errorLog = new StringBuilder();
+
+        // Date validation
+        if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            dateErrorLabel.setText("Invalid date format. Use YYYY-MM-DD.");
+            dateErrorLabel.setVisible(true);
+            announceToScreenReader(
+                "Invalid date format. Use YYYY dash MM dash DD."
+            );
+            errorLog.append("Invalid date format. Use YYYY-MM-DD.\n");
+            hasError = true;
+        }
+
+        // Student validation
+        if (student.isEmpty()) {
+            studentErrorLabel.setText("Student is required.");
+            studentErrorLabel.setVisible(true);
+            announceToScreenReader("Student is required.");
+            errorLog.append("Student is required.\n");
+            hasError = true;
+        }
+
+        // School validation
+        if (school.isEmpty()) {
+            schoolErrorLabel.setText("School is required.");
+            schoolErrorLabel.setVisible(true);
+            announceToScreenReader("School is required.");
+            errorLog.append("School is required.\n");
+            hasError = true;
+        }
+
+        // Project validation
+        if (setupProjectName.isEmpty()) {
+            projectErrorLabel.setText("Project is required.");
+            projectErrorLabel.setVisible(true);
+            announceToScreenReader("Project is required.");
+            errorLog.append("Project is required.\n");
+            hasError = true;
+        }
+
+        // Teacher validation
+        if (teacher.isEmpty()) {
+            teacherErrorLabel.setText("Teacher is required.");
+            teacherErrorLabel.setVisible(true);
+            announceToScreenReader("Teacher is required.");
+            errorLog.append("Teacher is required.\n");
+            hasError = true;
+        }
+
+        // TVI validation
+        if (tvi.isEmpty()) {
+            tviErrorLabel.setText("TVI is required.");
+            tviErrorLabel.setVisible(true);
+            announceToScreenReader("TVI is required.");
+            errorLog.append("TVI is required.\n");
+            hasError = true;
+        }
+
+        // Subject validation
+        if (subject.isEmpty()) {
+            subjectErrorLabel.setText("Subject is required.");
+            subjectErrorLabel.setVisible(true);
+            announceToScreenReader("Subject is required.");
+            errorLog.append("Subject is required.\n");
+            hasError = true;
+        }
+
+        // Notes validation (optional, but can check for length)
+        if (notes.length() > 500) {
+            notesErrorLabel.setText("Notes must be less than 500 characters.");
+            notesErrorLabel.setVisible(true);
+            announceToScreenReader("Notes must be less than 500 characters.");
+            errorLog.append("Notes must be less than 500 characters.\n");
+            hasError = true;
+        }
+
+        if (hasError) {
+            showLogWindow("Submission Error", errorLog.toString());
+            return;
+        }
+
+        // Confirmation log for Project Setup only
+        StringBuilder confirmationLog = new StringBuilder();
+        confirmationLog.append("Saved Project Setup Data:\n");
+        confirmationLog.append("Date: ").append(date).append("\n");
+        confirmationLog.append("Student: ").append(student).append("\n");
+        confirmationLog.append("School: ").append(school).append("\n");
+        confirmationLog
+            .append("Project: ")
+            .append(setupProjectName)
+            .append("\n");
+        confirmationLog.append("Teacher: ").append(teacher).append("\n");
+        confirmationLog.append("TVI: ").append(tvi).append("\n");
+        confirmationLog.append("Subject: ").append(subject).append("\n");
+        confirmationLog.append("Notes: ").append(notes).append("\n");
+        confirmationLog.append("Updated: ").append(updated).append("\n");
+        confirmationLog
+            .append("Complete: ")
+            .append(complete ? "Yes" : "No")
+            .append("\n");
+        confirmationLog.append("Media Type: ").append(mediaType).append("\n");
+        confirmationLog
+            .append("Proof Status: ")
+            .append(proofStatus)
+            .append("\n");
+        confirmationLog
+            .append("Delivery Mode: ")
+            .append(deliveryMode)
+            .append("\n");
+
+        try (
+            Connection conn = DriverManager.getConnection(DB_URL);
+            PreparedStatement pstmt = conn.prepareStatement(
+                "INSERT INTO Project_Details (project_name_id, student_id, teacher_id, subject_id, school_id, proof_status, complete, delivery_mode, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+        ) {
+            pstmt.setString(1, setupProjectName);
+            pstmt.setInt(2, studentId);
+            pstmt.setInt(3, teacherId);
+            pstmt.setInt(4, subjectId);
+            pstmt.setInt(5, schoolId);
+            pstmt.setString(6, proofStatus);
+            pstmt.setBoolean(7, complete);
+            pstmt.setString(8, deliveryMode);
+            pstmt.setString(9, dateField.getText());
+            pstmt.executeUpdate();
+
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                detailId = rs.getInt(1);
+            }
+            this.currentDetailId = detailId;
+        } catch (SQLException | NumberFormatException e) {
+            showLogWindow(
+                "Database Error",
+                "Error saving data: " + e.getMessage()
+            );
+            announceToScreenReader("Error saving data: " + e.getMessage());
             return;
         }
 
         loadDataFromDatabase();
-        JOptionPane.showMessageDialog(this, "Data submitted successfully.");
+        refreshProjectNames(); // Refresh project names in case new ones were added
+
+        // Switch to Projects tab to show updated table
+        for (Component c : getContentPane().getComponents()) {
+            if (c instanceof JTabbedPane) {
+                ((JTabbedPane) c).setSelectedIndex(2);
+                break;
+            }
+        }
+
+        showLogWindow("Submission Confirmation", confirmationLog.toString());
+        announceToScreenReader("Data submitted successfully.");
         clearInputFields();
+    }
+
+    private void showLogWindow(String title, String message) {
+        JTextArea textArea = new JTextArea(message);
+        textArea.setEditable(false);
+        textArea.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(600, 400));
+        JOptionPane.showMessageDialog(
+            this,
+            scrollPane,
+            title,
+            JOptionPane.INFORMATION_MESSAGE
+        );
     }
 
     /**
@@ -1482,7 +3341,7 @@ public class LedgerGUI extends JFrame {
         String formattedDate = currentDate.format(formatter);
         dateField.setText(formattedDate);
 
-        completeCheckBox.setSelected(false);
+        completeComboBox.setSelectedIndex(0); // Reset to "No"
     }
 
     /**
@@ -1620,16 +3479,14 @@ public class LedgerGUI extends JFrame {
         HeaderFooterPageEvent event
     ) throws DocumentException {
         double totalTime = 0.0;
-        PdfPTable table = new PdfPTable(6);
+        PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
-        table.setWidths(new float[] { 2, 2, 2, 2, 2, 1 });
+        table.setWidths(new float[] { 2, 2, 2, 1 });
 
         // Add table headers
         for (String header : new String[] {
             "Date",
             "Student",
-            "Subject",
-            "School",
             "Project",
             "Time",
         }) {
@@ -1672,6 +3529,9 @@ public class LedgerGUI extends JFrame {
         // Add data
         for (int i = 0; i < Math.min(maxRows, data.size()); i++) {
             String[] row = data.get(i);
+            System.out.println(
+                "Adding row to PDF table: " + java.util.Arrays.toString(row)
+            );
             for (int j = 0; j < row.length; j++) {
                 PdfPCell pdfCell = new PdfPCell(
                     new Phrase(
@@ -1699,7 +3559,7 @@ public class LedgerGUI extends JFrame {
 
         // Fill remaining rows with empty cells if necessary
         for (int i = data.size(); i < maxRows; i++) {
-            for (int j = 0; j < 6; j++) {
+            for (int j = 0; j < 4; j++) {
                 PdfPCell pdfCell = new PdfPCell(new Phrase(" "));
                 pdfCell.setBorder(com.itextpdf.text.Rectangle.NO_BORDER);
                 pdfCell.setPadding(5);
@@ -1727,6 +3587,7 @@ public class LedgerGUI extends JFrame {
             } catch (DocumentException de) {
                 throw new ExceptionConverter(de);
             }
+            // Helper functions for inserting or getting IDs
         }
 
         @Override
@@ -1897,28 +3758,33 @@ public class LedgerGUI extends JFrame {
         try (
             Connection conn = DriverManager.getConnection(DB_URL);
             PreparedStatement pstmt = conn.prepareStatement(
-                "SELECT project_name, element, time FROM Project_Tracking WHERE project_name IN (" +
+                "SELECT pt.updated AS date, s.name AS student, pn.name AS project_name, pt.time " +
+                "FROM Project_Tracking pt " +
+                "JOIN Project_Name pn ON pt.project_name_id = pn.project_name_id " +
+                "JOIN Students s ON pt.student_id = s.student_id " +
+                "WHERE pn.name IN (" +
                 String.join(
                     ",",
                     Collections.nCopies(selectedProjects.size(), "?")
                 ) +
-                ") AND date BETWEEN ? AND ? ORDER BY project_name"
-            )
+                ") AND pt.updated BETWEEN ? AND ? ORDER BY pt.updated"
+            );
         ) {
-            pstmt.setString(1, startDate);
-            pstmt.setString(2, endDate);
-
-            // Set project parameters
+            // Set project name parameters first
             for (int i = 0; i < selectedProjects.size(); i++) {
-                pstmt.setString(i + 3, selectedProjects.get(i));
+                pstmt.setString(i + 1, selectedProjects.get(i));
             }
+            // Then set date parameters
+            pstmt.setString(selectedProjects.size() + 1, startDate);
+            pstmt.setString(selectedProjects.size() + 2, endDate);
 
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
                 String[] row = {
+                    rs.getString("date"),
+                    rs.getString("student"),
                     rs.getString("project_name"),
-                    rs.getString("element"),
                     rs.getString("time"),
                 };
                 trackingData.add(row);
@@ -1929,6 +3795,272 @@ public class LedgerGUI extends JFrame {
                 "Error fetching tracking data: " + e.getMessage()
             );
         }
+        System.out.println(
+            "Tracking data rows fetched: " + trackingData.size()
+        );
         return trackingData;
+    }
+
+    /**
+     * Retrieves a localized string from the resource bundle.
+     * @param key The key for the string in the resource bundle.
+     * @return The localized string.
+     */
+    private String getString(String key) {
+        try {
+            return bundle.getString(key);
+        } catch (MissingResourceException e) {
+            System.err.println("Missing resource key: " + key);
+            return "!" + key + "!"; // Return a clear indicator if the key is missing
+        }
+    }
+
+    // Helper functions for inserting or getting IDs
+
+    private int getOrInsertSchoolId(String schoolName) {
+        if (schoolName == null || schoolName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT school_id FROM Schools WHERE name = ?"
+            );
+            select.setString(1, schoolName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("school_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Schools (name) VALUES (?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, schoolName);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("School insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertLeaId(String leaName) {
+        if (leaName == null || leaName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT lea_id FROM LEAs WHERE name = ?"
+            );
+            select.setString(1, leaName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("lea_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO LEAs (name) VALUES (?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, leaName);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("LEA insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertTeacherId(String teacherName, int schoolId) {
+        if (teacherName == null || teacherName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT teacher_id FROM Teachers WHERE name = ?"
+            );
+            select.setString(1, teacherName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("teacher_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Teachers (name, school_id) VALUES (?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, teacherName);
+            insert.setInt(2, schoolId);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("Teacher insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertTviId(String tviName, int schoolId) {
+        if (tviName == null || tviName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT tvi_id FROM TVIs WHERE name = ?"
+            );
+            select.setString(1, tviName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("tvi_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO TVIs (name, school_id) VALUES (?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, tviName);
+            insert.setInt(2, schoolId);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("TVI insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertStudentId(
+        String studentName,
+        int schoolId,
+        int leaId
+    ) {
+        if (studentName == null || studentName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT student_id FROM Students WHERE name = ?"
+            );
+            select.setString(1, studentName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("student_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Students (name, school_id, lea_id) VALUES (?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, studentName);
+            insert.setInt(2, schoolId);
+            insert.setInt(3, leaId);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("Student insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertSubjectId(
+        String subjectName,
+        int teacherId,
+        int schoolId
+    ) {
+        if (subjectName == null || subjectName.isEmpty()) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT subject_id FROM Subjects WHERE name = ?"
+            );
+            select.setString(1, subjectName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("subject_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Subjects (name, teacher_id, school_id) VALUES (?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, subjectName);
+            insert.setInt(2, teacherId);
+            insert.setInt(3, schoolId);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("Subject insert/get error: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    private int getOrInsertProjectNameId(String projectName, String date) {
+        if (projectName == null || projectName.isEmpty()) {
+            logger.error(
+                "getOrInsertProjectNameId: projectName is null or empty."
+            );
+            return -1;
+        }
+        if (date == null || date.isEmpty()) {
+            date = java.time.LocalDate.now().toString(); // fallback to today
+            logger.info(
+                "getOrInsertProjectNameId: date was null/empty, using current date: {}",
+                date
+            );
+        }
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT project_name_id FROM Project_Name WHERE name = ?"
+            );
+            select.setString(1, projectName);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("project_name_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Project_Name (name, date) VALUES (?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, projectName);
+            insert.setString(2, date);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            logger.error(
+                "Project_Name insert/get error: {} (projectName={}, date={})",
+                e.getMessage(),
+                projectName,
+                date
+            );
+        }
+        return -1;
+    }
+
+    // --- Logging methods ---
+
+    private int getOrInsertMediaTypeId(String mediaType, int projectNameId) {
+        if (
+            mediaType == null || mediaType.isEmpty() || projectNameId == -1
+        ) return -1;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT media_type_id FROM Media_Types WHERE type = ? AND project_name_id = ?"
+            );
+            select.setString(1, mediaType);
+            select.setInt(2, projectNameId);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return rs.getInt("media_type_id");
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Media_Types (type, project_name_id) VALUES (?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            insert.setString(1, mediaType);
+            insert.setInt(2, projectNameId);
+            insert.executeUpdate();
+            ResultSet gen = insert.getGeneratedKeys();
+            if (gen.next()) return gen.getInt(1);
+        } catch (SQLException e) {
+            System.err.println(
+                "Media_Type insert/get error: " + e.getMessage()
+            );
+        }
+        return -1;
+    }
+
+    private void insertStudentTeacher(int studentId, int teacherId) {
+        if (studentId == -1 || teacherId == -1) return;
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            PreparedStatement select = conn.prepareStatement(
+                "SELECT * FROM Student_Teachers WHERE student_id = ? AND teacher_id = ?"
+            );
+            select.setInt(1, studentId);
+            select.setInt(2, teacherId);
+            ResultSet rs = select.executeQuery();
+            if (rs.next()) return; // already exists
+            PreparedStatement insert = conn.prepareStatement(
+                "INSERT INTO Student_Teachers (student_id, teacher_id) VALUES (?, ?)"
+            );
+            insert.setInt(1, studentId);
+            insert.setInt(2, teacherId);
+            insert.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println(
+                "Student_Teacher insert/get error: " + e.getMessage()
+            );
+        }
     }
 }

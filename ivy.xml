@@ -1,0 +1,9 @@
+<ivy-module version="2.0">
+  <info organisation="org.example" module="BrailleTranscriptionLedger"/>
+  <dependencies>
+    <dependency org="org.xerial" name="sqlite-jdbc" rev="3.36.0.3"/>
+    <dependency org="com.formdev" name="flatlaf" rev="3.5.1"/>
+    <dependency org="com.formdev" name="flatlaf-intellij-themes" rev="3.5.1"/>
+    <dependency org="com.itextpdf" name="itextpdf" rev="5.5.13.4"/>
+  </dependencies>
+</ivy-module>

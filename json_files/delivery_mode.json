@@ -1,0 +1,10 @@
+{
+  "delivery_mode": [
+    "Delivery",
+    "Pick up",
+    "Email",
+    "CANVAS",
+    "OneDrive",
+    "Post Online"
+  ]
+}

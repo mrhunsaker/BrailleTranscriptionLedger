@@ -1,0 +1,13 @@
+arguments=--init-script /var/home/ryhunsaker/.var/app/dev.zed.Zed/data/zed/extensions/work/java/jdtls/jdt-language-server-1.48.0-202506271502/configuration/org.eclipse.osgi/58/0/.cp/gradle/init/init.gradle
+auto.sync=false
+build.scans.enabled=false
+connection.gradle.distribution=GRADLE_DISTRIBUTION(VERSION(8.9))
+connection.project.dir=
+eclipse.preferences.version=1
+gradle.user.home=
+java.home=/var/opt/java-21-openjdk-21.0.7.0.6-1.portable.jdk.x86_64
+jvm.arguments=
+offline.mode=false
+override.workspace.settings=true
+show.console.view=true
+show.executions.view=true

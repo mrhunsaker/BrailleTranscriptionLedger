@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"BrailleTranscriptionLedger","l":"LedgerGUI"},{"p":"BrailleTranscriptionLedger","l":"Logger"},{"p":"BrailleTranscriptionLedger","l":"Logger.LogLevel"}];updateSearchResults();

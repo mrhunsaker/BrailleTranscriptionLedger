@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="BrailleTranscriptionLedger" default="run" basedir=".">
+
+    <!-- Set global properties -->
+    <property name="src.dir" value="src/main/java"/>
+    <property name="build.dir" value="build"/>
+    <property name="dist.dir" value="dist"/>
+    <property name="main-class" value="LedgerGUI"/>
+    <property name="lib.dir" value="lib"/>
+
+    <!-- Create build and dist directories -->
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${dist.dir}"/>
+    </target>
+
+    <!-- Compile source files -->
+    <target name="compile" depends="init">
+        <javac srcdir="${src.dir}" destdir="${build.dir}" includeantruntime="false">
+            <classpath>
+                <fileset dir="${lib.dir}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+        </javac>
+    </target>
+
+    <!-- Create JAR file -->
+    <target name="jar" depends="compile">
+        <jar destfile="${dist.dir}/BrailleTranscriptionLedger.jar" basedir="${build.dir}">
+            <manifest>
+                <attribute name="Main-Class" value="${main-class}"/>
+                <attribute name="Class-Path" value="lib/sqlite-jdbc.jar lib/flatlaf.jar lib/flatlaf-intellij-themes.jar lib/itextpdf.jar"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <!-- Run the application -->
+    <target name="run" depends="jar">
+        <java jar="${dist.dir}/BrailleTranscriptionLedger.jar" fork="true">
+            <classpath>
+                <fileset dir="${lib.dir}">
+                    <include name="**/*.jar"/>
+                </fileset>
+            </classpath>
+        </java>
+    </target>
+</project>
