@@ -1,9 +1,15 @@
 <ivy-module version="2.0">
   <info organisation="org.example" module="BrailleTranscriptionLedger"/>
   <dependencies>
-    <dependency org="org.xerial" name="sqlite-jdbc" rev="3.36.0.3"/>
+    <dependency org="com.h2database" name="h2" rev="2.2.224"/>
     <dependency org="com.formdev" name="flatlaf" rev="3.5.1"/>
     <dependency org="com.formdev" name="flatlaf-intellij-themes" rev="3.5.1"/>
     <dependency org="com.itextpdf" name="itextpdf" rev="5.5.13.4"/>
+    <dependency org="org.json" name="json" rev="20240303"/>
+    <dependency org="org.slf4j" name="slf4j-api" rev="2.0.16"/>
+    <dependency org="ch.qos.logback" name="logback-classic" rev="1.5.7"/>
+    <dependency org="ch.qos.logback" name="logback-core" rev="1.5.7"/>
+    <dependency org="org.apache.commons" name="commons-lang3" rev="3.12.0"/>
+    <dependency org="commons-io" name="commons-io" rev="2.19.0"/>
   </dependencies>
 </ivy-module>

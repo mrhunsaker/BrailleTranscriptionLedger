@@ -1,0 +1,14 @@
+{
+  "media_types": [
+    "Braille",
+    "Graphics",
+    "DAISY",
+    "Large Print",
+    "Accessible Document",
+    "Monarch PDF",
+    "3D Print",
+    "Accessible Website",
+    "JAWS Script",
+    "NVDA Addon"
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "LEAs": [
+  "teachers": [
     "Teacher A",
     "Teacher B",
     "Teacher C",

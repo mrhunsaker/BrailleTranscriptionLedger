@@ -1,0 +1,19 @@
+{
+  "subjects": [
+    "Math",
+    "English",
+    "Chemistry",
+    "Biology",
+    "Health",
+    "Social Studies",
+    "Art",
+    "Music",
+    "Library",
+    "Computer Lab",
+    "Creative Writing",
+    "Coding",
+    "Computer Science",
+    "History",
+    "ELA"
+  ]
+}

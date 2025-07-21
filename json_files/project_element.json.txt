@@ -1,0 +1,14 @@
+{
+  "project_elements": [
+    "Web Accessibility",
+    "Document Accessibility",
+    "Screen Reader Scripting",
+    "OCR",
+    "Markdown",
+    "Braille",
+    "Graphics",
+    "Formatting",
+    "Proofreading",
+    "Embossing"
+  ]
+}

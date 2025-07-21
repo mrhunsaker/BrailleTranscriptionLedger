@@ -1,0 +1,8 @@
+{
+  "schools": [
+    "School 1",
+    "School 2",
+    "School 3",
+    "School 4"
+  ]
+}
