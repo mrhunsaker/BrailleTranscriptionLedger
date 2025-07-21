@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
+
 package BrailleTranscriptionLedger;
 
+import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatDarkLaf;
+import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.intellijthemes.*;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
@@ -53,7 +58,7 @@ import org.slf4j.LoggerFactory;
  * The application allows the user to input new ledger entries, view the existing entries in a table, and generate a
  * PDF report for a specified date range and selected projects.
  * <p>
- * The application uses a SQLite database to store the ledger data and supports various features, such as:
+ * The application uses an H2 embedded database to store the ledger data and supports various features, such as:
  * <ul>
  *     <li>Saving new ledger entries to the database</li>
  *     <li>Retrieving and displaying existing ledger entries in a table</li>
@@ -65,7 +70,7 @@ import org.slf4j.LoggerFactory;
  * initializes the database, creates the GUI components, and handles user interactions.
  *
  * @author Michael Ryan Hunsaker, M.Ed., Ph.D.
- * @version 2024.0.0
+ * @version 2025.07.01
  */
 public class LedgerGUI extends JFrame {
 
@@ -115,6 +120,13 @@ public class LedgerGUI extends JFrame {
     > INTELLIJ_THEMES = new TreeMap<>();
 
     static {
+        // FlatLaf core themes
+        INTELLIJ_THEMES.put("Flat Light", FlatLightLaf.class);
+        INTELLIJ_THEMES.put("Flat Dark", FlatDarkLaf.class);
+        INTELLIJ_THEMES.put("Flat IntelliJ", FlatIntelliJLaf.class);
+        INTELLIJ_THEMES.put("Flat Darcula", FlatDarculaLaf.class);
+
+        // IntelliJ themes
         INTELLIJ_THEMES.put("Arc", FlatArcIJTheme.class);
         INTELLIJ_THEMES.put("Arc Orange", FlatArcOrangeIJTheme.class);
         INTELLIJ_THEMES.put("Carbon", FlatCarbonIJTheme.class);
@@ -233,6 +245,10 @@ public class LedgerGUI extends JFrame {
      */
     private JMenuItem keyboardShortcutsMenuItem;
     /**
+     * Menu item for tutorial/how-to.
+     */
+    private JMenuItem tutorialMenuItem;
+    /**
      * Menu item to skip to main content for accessibility.
      */
     private JMenuItem skipToMainContentItem;
@@ -349,18 +365,18 @@ public class LedgerGUI extends JFrame {
      */
     private final DefaultTableModel tableModel;
     /**
-     * The URL of the SQLite database used by the application.
+     * The URL of the H2 embedded database used by the application.
      */
     /**
-     * The URL for connecting to the SQLite database.
+     * The URL for connecting to the H2 embedded database.
      */
-    private static final String DB_URL = "jdbc:sqlite:ledger.db";
+    private static final String DB_URL = "jdbc:h2:./ledger;AUTO_SERVER=TRUE";
 
     /**
      * Constructs a new `LedgerGUI` instance and initializes the application's components.
      */
     public LedgerGUI() {
-        // Set global font for all UI components to 20pt before creating any components
+        // Set global font for all UI components to 32pt before creating any components
         FontUIResource globalFont = new FontUIResource(
             "SansSerif",
             Font.PLAIN,
@@ -461,12 +477,72 @@ public class LedgerGUI extends JFrame {
             System.exit(0);
         });
 
-        for (String themeName : INTELLIJ_THEMES.keySet()) {
+        // Add FlatLaf Core Themes header
+        JMenuItem coreHeader = new JMenuItem("FlatLaf Core Themes");
+        coreHeader.setEnabled(false);
+        themeMenu.add(coreHeader);
+
+        String[] coreThemes = {
+            "Flat Light",
+            "Flat Dark",
+            "Flat IntelliJ",
+            "Flat Darcula",
+        };
+        for (String themeName : coreThemes) {
             JMenuItem item = new JMenuItem(themeName);
             item.setFocusable(true);
             item.addActionListener(e -> setIntelliJTheme(themeName));
             themeMenu.add(item);
         }
+
+        // Add Light Themes header
+        JMenuItem lightHeader = new JMenuItem("Light Themes");
+        lightHeader.setEnabled(false);
+        themeMenu.add(lightHeader);
+
+        String[] lightThemes = {
+            "Arc",
+            "Arc Orange",
+            "Cyan Light",
+            "Gray",
+            "Light Flat",
+            "Solarized Light",
+            "Vuesion",
+        };
+        for (String themeName : lightThemes) {
+            JMenuItem item = new JMenuItem(themeName);
+            item.setFocusable(true);
+            item.addActionListener(e -> setIntelliJTheme(themeName));
+            themeMenu.add(item);
+        }
+
+        // Add Dark Themes header
+        JMenuItem darkHeader = new JMenuItem("Dark Themes");
+        darkHeader.setEnabled(false);
+        themeMenu.add(darkHeader);
+
+        String[] darkThemes = {
+            "Carbon",
+            "Cobalt 2",
+            "Dark Purple",
+            "Dracula",
+            "Gruvbox Dark Hard",
+            "Hiberbee Dark",
+            "High Contrast",
+            "Material Design Dark",
+            "Monocai",
+            "Nord",
+            "One Dark",
+            "Solarized Dark",
+            "Spacegray",
+        };
+        for (String themeName : darkThemes) {
+            JMenuItem item = new JMenuItem(themeName);
+            item.setFocusable(true);
+            item.addActionListener(e -> setIntelliJTheme(themeName));
+            themeMenu.add(item);
+        }
+
         fileMenu.add(aboutMenuItem);
         fileMenu.add(exitMenuItem);
 
@@ -478,17 +554,11 @@ public class LedgerGUI extends JFrame {
         shortcutsMenuItem.addActionListener(e -> showHelpDialog());
         helpMenu.add(shortcutsMenuItem);
 
-        // Language selection menu
-        JMenu languageMenu = new JMenu(getString("language_menu"));
-        String[] languages = { "English", "Spanish" };
-        Locale[] locales = { Locale.ENGLISH, new Locale("es") };
-        for (int i = 0; i < languages.length; i++) {
-            JMenuItem langItem = new JMenuItem(languages[i]);
-            final Locale locale = locales[i];
-            langItem.addActionListener(e -> setLanguage(locale));
-            languageMenu.add(langItem);
-        }
-        accessibilityMenu.add(languageMenu);
+        // Tutorial menu item
+        tutorialMenuItem = new JMenuItem("Tutorial");
+        tutorialMenuItem.setFocusable(true);
+        tutorialMenuItem.addActionListener(e -> showTutorialDialog());
+        helpMenu.add(tutorialMenuItem);
 
         menuBar.add(fileMenu);
         menuBar.add(accessibilityMenu);
@@ -527,9 +597,13 @@ public class LedgerGUI extends JFrame {
         trackingDateHelpBtn.setPreferredSize(
             new Dimension(48, dateField.getPreferredSize().height)
         );
-        trackingDateHelpBtn.setToolTipText("Get help with entering the date.");
+        trackingDateHelpBtn.setToolTipText(getString("date_tooltip"));
         trackingDateHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "Date Help", dateField);
+            showAccessibleDialog(
+                this,
+                getString("date_label"),
+                new JLabel(getString("date_tooltip"))
+            );
         });
         trackingDatePanel.add(trackingDateHelpBtn, BorderLayout.EAST);
         addLabelAndField(
@@ -547,9 +621,13 @@ public class LedgerGUI extends JFrame {
         dateHelpBtn.setPreferredSize(
             new Dimension(48, dateField.getPreferredSize().height)
         );
-        dateHelpBtn.setToolTipText("Get help with entering the date.");
+        dateHelpBtn.setToolTipText(getString("date_tooltip"));
         dateHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "Date Help", dateField);
+            showAccessibleDialog(
+                this,
+                getString("date_label"),
+                new JLabel(getString("date_tooltip"))
+            );
         });
         // Project Name input panel for Project Setup
         setupProjectNameTextField = new JTextField();
@@ -566,12 +644,12 @@ public class LedgerGUI extends JFrame {
                 setupProjectNameTextField.getPreferredSize().height
             )
         );
-        setupProjectNameHelpBtn.setToolTipText("Get help with Project Name.");
+        setupProjectNameHelpBtn.setToolTipText(getString("project_name_help"));
         setupProjectNameHelpBtn.addActionListener(e -> {
             showAccessibleDialog(
                 this,
-                "Project Name Help",
-                setupProjectNameTextField
+                getString("project_label"),
+                new JLabel(getString("project_name_help"))
             );
         });
 
@@ -625,9 +703,13 @@ public class LedgerGUI extends JFrame {
         studentHelpBtn.setPreferredSize(
             new Dimension(48, studentField.getPreferredSize().height)
         );
-        studentHelpBtn.setToolTipText("Get help with selecting the student.");
+        studentHelpBtn.setToolTipText(getString("student_tooltip"));
         studentHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "Student Help", studentField);
+            showAccessibleDialog(
+                this,
+                getString("student_label"),
+                new JLabel(getString("student_tooltip"))
+            );
         });
         JPanel studentPanel = new JPanel(new BorderLayout());
         studentPanel.add(studentField, BorderLayout.CENTER);
@@ -653,11 +735,13 @@ public class LedgerGUI extends JFrame {
         subjectHelpBtn.setPreferredSize(
             new Dimension(48, subjectField.getPreferredSize().height)
         );
-        subjectHelpBtn.setToolTipText(
-            "Get help with selecting the academic subject."
-        );
+        subjectHelpBtn.setToolTipText(getString("subject_tooltip"));
         subjectHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "Subject Help", subjectField);
+            showAccessibleDialog(
+                this,
+                getString("subject_label"),
+                new JLabel(getString("subject_tooltip"))
+            );
         });
         JPanel subjectPanel = new JPanel(new BorderLayout());
         subjectPanel.add(subjectField, BorderLayout.CENTER);
@@ -682,18 +766,14 @@ public class LedgerGUI extends JFrame {
             .getAccessibleContext()
             .setAccessibleDescription(getString("school_accessible"));
         JButton schoolHelpBtn = new JButton("?");
-        schoolHelpBtn.setToolTipText("Get help with selecting the school.");
+        schoolHelpBtn.setToolTipText(getString("school_tooltip"));
         schoolHelpBtn.addActionListener(e -> {
             showAccessibleDialog(
                 this,
-                "School Help",
-                new JLabel(
-                    "<html>Select the school associated with the student from the dropdown list. If the school is missing, contact your administrator. This field links the work to the correct educational institution.</html>"
-                )
+                getString("school_label"),
+                new JLabel(getString("school_tooltip"))
             );
-            announceToScreenReader(
-                "Select the school associated with the student from the dropdown list."
-            );
+            announceToScreenReader(getString("school_tooltip"));
         });
         // Group school field and help button in a panel
         JPanel schoolPanel = new JPanel(new BorderLayout());
@@ -730,22 +810,7 @@ public class LedgerGUI extends JFrame {
         proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 32));
 
         // --- Language selector menu ---
-        JMenuBar menuBar = getJMenuBar();
-        if (menuBar == null) {
-            menuBar = new JMenuBar();
-            setJMenuBar(menuBar);
-        }
-        JMenu accessibilityMenu = new JMenu(getString("accessibility_menu"));
-        // languageMenu already declared above, remove duplicate
-        JMenuItem englishItem = new JMenuItem("English");
-        JMenuItem spanishItem = new JMenuItem("Español");
-        languageMenu.add(englishItem);
-        languageMenu.add(spanishItem);
-        accessibilityMenu.add(languageMenu);
-        menuBar.add(accessibilityMenu);
-
-        englishItem.addActionListener(e -> setLanguage("en"));
-        spanishItem.addActionListener(e -> setLanguage("es"));
+        // Duplicate language menu setup removed to prevent repeated menu and items
         proofStatusField.setToolTipText(getString("proof_status_help"));
         proofStatusField
             .getAccessibleContext()
@@ -760,7 +825,7 @@ public class LedgerGUI extends JFrame {
             showAccessibleDialog(
                 this,
                 getString("proof_status_help"),
-                proofStatusField
+                new JLabel(getString("proof_status_help"))
             );
         });
         JPanel proofStatusPanel = new JPanel(new BorderLayout());
@@ -788,9 +853,13 @@ public class LedgerGUI extends JFrame {
         teacherHelpBtn.setPreferredSize(
             new Dimension(48, teacherScrollPane.getPreferredSize().height)
         );
-        teacherHelpBtn.setToolTipText("Get help with selecting teachers.");
+        teacherHelpBtn.setToolTipText(getString("teacher_tooltip"));
         teacherHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "Teachers Help", teacherScrollPane);
+            showAccessibleDialog(
+                this,
+                getString("teacher_label"),
+                new JLabel(getString("teacher_tooltip"))
+            );
         });
         JPanel teacherPanel = new JPanel(new BorderLayout());
         teacherPanel.add(teacherScrollPane, BorderLayout.CENTER);
@@ -810,11 +879,13 @@ public class LedgerGUI extends JFrame {
         leaHelpBtn.setPreferredSize(
             new Dimension(48, leaField.getPreferredSize().height)
         );
-        leaHelpBtn.setToolTipText(
-            "Get help with selecting the Local Education Agency (LEA)."
-        );
+        leaHelpBtn.setToolTipText(getString("lea_tooltip"));
         leaHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "LEA Help", leaField);
+            showAccessibleDialog(
+                this,
+                getString("lea_label"),
+                new JLabel(getString("lea_tooltip"))
+            );
         });
         JPanel leaPanel = new JPanel(new BorderLayout());
         leaPanel.add(leaField, BorderLayout.CENTER);
@@ -840,11 +911,13 @@ public class LedgerGUI extends JFrame {
         tviHelpBtn.setPreferredSize(
             new Dimension(48, tviScrollPane.getPreferredSize().height)
         );
-        tviHelpBtn.setToolTipText(
-            "Get help with selecting the Teacher of the Visually Impaired (TVI)."
-        );
+        tviHelpBtn.setToolTipText(getString("tvi_tooltip"));
         tviHelpBtn.addActionListener(e -> {
-            showAccessibleDialog(this, "TVI Help", tviScrollPane);
+            showAccessibleDialog(
+                this,
+                getString("tvi_label"),
+                new JLabel(getString("tvi_tooltip"))
+            );
         });
         JPanel tviPanel = new JPanel(new BorderLayout());
         tviPanel.add(tviScrollPane, BorderLayout.CENTER);
@@ -1390,6 +1463,50 @@ public class LedgerGUI extends JFrame {
     }
 
     /**
+     * Show a dialog with the tutorial/how-to content loaded from tutorial.html.
+     */
+    private void showTutorialDialog() {
+        String tutorialText =
+            "Braille Transcription Ledger - Quick Start Tutorial\n\n" +
+            "Welcome to the Accessible Document Generation Ledger! This tutorial will guide you through the basic features and workflow of the program.\n\n" +
+            "1. Overview\n" +
+            "This application helps you track and manage transcription projects, students, teachers, and related data in an accessible way.\n\n" +
+            "2. Main Features\n" +
+            "- Add/Edit Ledger Entries: Enter details about students, projects, time spent, and more.\n" +
+            "- Keyboard Accessibility: All interactive elements are accessible via keyboard shortcuts.\n" +
+            "- Generate PDF Reports: Export your data for sharing or record-keeping.\n" +
+            "- Theme Support: Choose from various visual themes for comfort and accessibility.\n\n" +
+            "3. Basic Workflow\n" +
+            "- Start a New Entry: Fill in the Date, Student, School, Project, Time, and other required fields. Use the Tab key to move between fields.\n" +
+            "- Submit Data: Click the Submit button or press Ctrl + Enter to save your entry.\n" +
+            "- Generate a PDF Report: Click Generate PDF or press Ctrl + G to create a report of your entries.\n" +
+            "- Navigate the Table: Use Arrow Keys to move through the data table.\n\n" +
+            "4. Accessibility & Shortcuts\n" +
+            "- Ctrl + . : Open the Help menu\n" +
+            "- Ctrl + Enter : Submit the form\n" +
+            "- Ctrl + G : Generate PDF\n" +
+            "- Tab / Shift + Tab : Move between fields\n" +
+            "- Alt : Focus the menu bar\n" +
+            "- Esc : Close dialogs\n\n" +
+            "Tip: All help buttons (?) next to fields provide additional guidance.\n\n" +
+            "5. Troubleshooting\n" +
+            "- If you encounter errors, check that all required fields are filled in correctly.\n" +
+            "- Use the Help menu for keyboard shortcuts and accessibility tips.\n" +
+            "- For further assistance, consult the documentation or contact support.\n\n" +
+            "6. Additional Resources\n" +
+            "Visit the project repository: https://github.com/ryhunsaker/BrailleTranscriptionLedger\n\n" +
+            "© 2025 Michael Ryan Hunsaker, M.Ed., Ph.D. All rights reserved.";
+
+        JTextArea textArea = new JTextArea(tutorialText);
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new java.awt.Dimension(700, 500));
+        showAccessibleDialog(this, "Program Tutorial", scrollPane);
+    }
+
+    /**
      * Setup the hidden live region label for screen reader announcements.
      */
     private void setupLiveRegion() {
@@ -1577,7 +1694,7 @@ public class LedgerGUI extends JFrame {
     private Map<String, JButton> customShortcutButtons = new HashMap<>();
 
     private void showKeyboardShortcutsDialog() {
-        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(0, 3, 10, 10));
         shortcutDropdowns.clear();
         customShortcutButtons.clear();
 
@@ -1638,7 +1755,7 @@ public class LedgerGUI extends JFrame {
                 public void keyPressed(KeyEvent e) {
                     captured[0] = KeyStroke.getKeyStrokeForEvent(e);
                     keyField.setText(
-                        KeyEvent.getKeyModifiersText(e.getModifiers()) +
+                        KeyEvent.getModifiersExText(e.getModifiersEx()) +
                         "+" +
                         KeyEvent.getKeyText(e.getKeyCode())
                     );
@@ -1944,7 +2061,7 @@ public class LedgerGUI extends JFrame {
     }
 
     /**
-     * Cleans the input by removing any characters that might cause issues with SQLite.
+     * Cleans the input by removing any characters that might cause issues with H2 SQL.
      *
      * @param input the input string to clean
      * @return the cleaned input string
@@ -1995,7 +2112,7 @@ public class LedgerGUI extends JFrame {
 
     private void setLanguage(String langCode) {
         Locale locale = langCode.equals("es")
-            ? new Locale("es")
+            ? Locale.forLanguageTag("es")
             : Locale.ENGLISH;
         labels = ResourceBundle.getBundle("messages", locale);
         currentLocale = locale;
@@ -2080,7 +2197,7 @@ public class LedgerGUI extends JFrame {
             "json_files/students.json",
             "students"
         );
-        JComboBox studentMaterial = new JComboBox<>(studentOptions);
+        JComboBox<String> studentMaterial = new JComboBox<>(studentOptions);
         // Create checkboxes for project options
         String[] projectOptions = getProjectNamesFromDatabase();
         JCheckBox[] projectCheckboxes = new JCheckBox[projectOptions.length];
@@ -2190,7 +2307,7 @@ public class LedgerGUI extends JFrame {
         System.setProperty("LOG_LEVEL", logLevelStr);
 
         // Set the look and feel to the system look and feel
-        String defaultTheme = "Cyan Light"; // or any other theme name from the map
+        String defaultTheme = "Dracula"; // or any other theme name from the map
         try {
             UIManager.setLookAndFeel(
                 INTELLIJ_THEMES.get(defaultTheme)
@@ -2200,7 +2317,7 @@ public class LedgerGUI extends JFrame {
             UIManager.put(
                 "defaultFont",
                 new FontUIResource(
-                    new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
+                    new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 32)
                 )
             ); // Example font size 16
         } catch (
@@ -2256,7 +2373,7 @@ public class LedgerGUI extends JFrame {
     }
 
     /**
-     * Initializes the SQLite database used by the application.
+     * Initializes the H2 embedded database used by the application.
      */
     /**
      * Initializes the database connection and ensures the database is ready for use.
@@ -2331,10 +2448,7 @@ public class LedgerGUI extends JFrame {
             );
             teacherField.setListData(teachers);
 
-            String[] leas = loadOptionsFromFile(
-                "json_files/LEAs.json",
-                "teachers"
-            );
+            String[] leas = loadOptionsFromFile("json_files/LEAs.json", "LEAs");
             leaField.setModel(new DefaultComboBoxModel<>(leas));
 
             String[] tvis = loadOptionsFromFile("json_files/tvis.json", "tvis");
@@ -2542,7 +2656,7 @@ public class LedgerGUI extends JFrame {
         ) {
             String sqlProjectTracking =
                 "CREATE TABLE IF NOT EXISTS Project_Tracking (" +
-                "tracking_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "tracking_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "detail_id INTEGER NOT NULL, " +
                 "project_name_id INTEGER NOT NULL, " +
                 "student_id INTEGER NOT NULL, " +
@@ -2565,10 +2679,10 @@ public class LedgerGUI extends JFrame {
                     e.getMessage()
                 );
             }
-            stmt.execute("PRAGMA foreign_keys = ON;");
+            // H2 enforces foreign keys by default; no PRAGMA needed
             String sqlProjectName =
                 "CREATE TABLE IF NOT EXISTS Project_Name (" +
-                "project_name_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "project_name_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "date TEXT NOT NULL)";
             try {
@@ -2581,7 +2695,7 @@ public class LedgerGUI extends JFrame {
             }
             String sqlSchools =
                 "CREATE TABLE IF NOT EXISTS Schools (" +
-                "school_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "school_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL)";
             try {
                 stmt.execute(sqlSchools);
@@ -2593,7 +2707,7 @@ public class LedgerGUI extends JFrame {
             }
             String sqlTeachers =
                 "CREATE TABLE IF NOT EXISTS Teachers (" +
-                "teacher_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "teacher_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "email TEXT, " +
                 "school_id INTEGER, " +
@@ -2608,7 +2722,7 @@ public class LedgerGUI extends JFrame {
             }
             String sqlSubjects =
                 "CREATE TABLE IF NOT EXISTS Subjects (" +
-                "subject_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "subject_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "teacher_id INTEGER NOT NULL, " +
                 "school_id INTEGER NOT NULL, " +
@@ -2626,7 +2740,7 @@ public class LedgerGUI extends JFrame {
 
             String sqlLEAs =
                 "CREATE TABLE IF NOT EXISTS LEAs (" +
-                "lea_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "lea_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL UNIQUE" +
                 ")";
             try {
@@ -2639,7 +2753,7 @@ public class LedgerGUI extends JFrame {
 
             String sqlTVIs =
                 "CREATE TABLE IF NOT EXISTS TVIs (" +
-                "tvi_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "tvi_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "email TEXT, " +
                 "school_id INTEGER NOT NULL, " +
@@ -2654,7 +2768,7 @@ public class LedgerGUI extends JFrame {
 
             String sqlStudents =
                 "CREATE TABLE IF NOT EXISTS Students (" +
-                "student_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "student_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
                 "email TEXT, " +
                 "school_id INTEGER NOT NULL, " +
@@ -2672,7 +2786,7 @@ public class LedgerGUI extends JFrame {
 
             String sqlMediaTypes =
                 "CREATE TABLE IF NOT EXISTS Media_Types (" +
-                "media_type_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "media_type_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "type TEXT NOT NULL, " +
                 "project_name_id INTEGER NOT NULL, " +
                 "FOREIGN KEY (project_name_id) REFERENCES Project_Name(project_name_id) ON DELETE CASCADE)";
@@ -2686,7 +2800,7 @@ public class LedgerGUI extends JFrame {
 
             String sqlProjectDetails =
                 "CREATE TABLE IF NOT EXISTS Project_Details (" +
-                "detail_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "detail_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "project_name_id INTEGER NOT NULL, " +
                 "student_id INTEGER NOT NULL, " +
                 "teacher_id INTEGER, " +
@@ -2986,9 +3100,14 @@ public class LedgerGUI extends JFrame {
             }
             pstmt.setInt(10, minutes);
             pstmt.executeUpdate();
+            // Build confirmation summary, similar to submit confirmation
+            confirmationLog.insert(
+                0,
+                "Project tracking info added successfully.\n\n"
+            );
             showLogWindow(
                 "Tracking Info Confirmation",
-                "Project tracking info added successfully."
+                confirmationLog.toString()
             );
             // Refresh Projects tab table after adding tracking info
             loadDataFromDatabase();
@@ -3273,7 +3392,7 @@ public class LedgerGUI extends JFrame {
                 Statement.RETURN_GENERATED_KEYS
             );
         ) {
-            pstmt.setString(1, setupProjectName);
+            pstmt.setInt(1, projectNameId);
             pstmt.setInt(2, studentId);
             pstmt.setInt(3, teacherId);
             pstmt.setInt(4, subjectId);

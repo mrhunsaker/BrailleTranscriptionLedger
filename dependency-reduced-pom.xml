@@ -4,7 +4,7 @@
   <groupId>com.example</groupId>
   <artifactId>ledger-gui</artifactId>
   <name>Braille Transcription Ledger</name>
-  <version>2024.0.0</version>
+  <version>2025.7.01</version>
   <description>Braille Transcription Ledger</description>
   <developers>
     <developer>

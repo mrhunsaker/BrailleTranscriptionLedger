@@ -4,14 +4,14 @@ plugins {
 }
 
 group = 'com.example'
-version = '2024.0.0'
+version = '2025.7.01'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+    implementation 'com.h2database:h2:2.2.224'
     implementation 'com.formdev:flatlaf:3.5.1'
     implementation 'com.formdev:flatlaf-intellij-themes:3.5.1'
     implementation 'com.itextpdf:itextpdf:5.5.13.4'
@@ -34,4 +34,24 @@ java {
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'BrailleTranscriptionLedger.LedgerGUI'
+        )
+    }
+}
+
+task fatJar(type: Jar) {
+    archiveBaseName = 'BrailleTranscriptionLedger-all'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': 'BrailleTranscriptionLedger.LedgerGUI'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
 }

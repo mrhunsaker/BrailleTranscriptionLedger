@@ -1,73 +1,92 @@
-# Accessibility Analysis for `LedgerGUI.java` (Post-Remediation)
+# Accessibility Analysis for Braille Transcription Ledger
+
+_Last updated: 2024-06_
 
 ## Overview
 
-This document provides an updated accessibility analysis of the `LedgerGUI.java` user interface, reflecting recent improvements. The analysis focuses on keyboard navigation, tab order, global shortcuts, screen reader compatibility, and overall usability for users with disabilities.
+Braille Transcription Ledger is designed with accessibility as a core requirement, aiming for compliance with WCAG 2.1 AA/AAA standards and best practices for desktop Java applications. This document provides a comprehensive analysis of the application's accessibility features, current status, and recommendations for continuous improvement.
 
 ---
 
-## Accessibility Features Implemented
 
-### 1. Keyboard Navigation
+## Accessibility Features
 
-- **Tab Order:** All interactive components (fields, buttons, checkboxes, table, menu items) are explicitly set as focusable. Users can navigate through all controls using Tab and Shift+Tab.
-- **Arrow Keys:** Table navigation supports arrow keys for moving between cells, and dropdowns/combo boxes support arrow key selection.
-- **Activation:** Buttons, checkboxes, and menu items are activatable via Spacebar or Enter.
-- **Menu Bar:** All menu items are focusable and navigable via keyboard.
+### 1. Keyboard Accessibility
+
+- **Tab Navigation:** All interactive elements (buttons, fields, checkboxes, tables, menus) are accessible via Tab and Shift+Tab. Logical tab order is enforced throughout the interface.
+- **Arrow Key Navigation:** Tables, dropdowns, and menu bars support navigation using arrow keys.
+- **Activation:** Spacebar and Enter activate buttons, checkboxes, and menu items.
+- **Menu Bar:** Fully navigable via keyboard, with Alt to focus and arrow keys to traverse menus.
+- **Dialog Focus:** All dialogs trap focus and support closing with Esc.
 
 ### 2. Global Keyboard Shortcuts
 
-- **Help Menu:** A "Help" menu is added to the menu bar, listing all keyboard shortcuts.
-- **Ctrl + . Shortcut:** Pressing Control + Period (`Ctrl + .`) anywhere in the app opens a help dialog listing all shortcuts and accessibility features.
-- **Other Shortcuts:** 
-  - **Ctrl + Enter:** Submit Form
-  - **Ctrl + G:** Generate PDF
-  - **Tab/Shift + Tab:** Move between fields
-  - **Arrow Keys:** Navigate tables/dropdowns
-  - **Spacebar/Enter:** Activate buttons/checkboxes
-  - **Alt:** Focus menu bar
-  - **Esc:** Close dialogs
+- **Help Dialog:** `Ctrl + .` opens a help dialog listing all keyboard shortcuts and accessibility features.
+- **Form Submission:** `Ctrl + Enter` submits forms.
+- **PDF Generation:** `Ctrl + G` generates PDF reports.
+- **Navigation:** Tab/Shift+Tab for fields, arrow keys for tables and dropdowns, Alt for menu bar, Esc for closing dialogs.
 
 ### 3. Screen Reader Compatibility
 
-- **Accessible Labels:** All labels are associated with their fields using `setLabelFor`.
-- **Accessible Names/Descriptions:** All fields and buttons have accessible names and descriptions, with HTML tags stripped for clarity.
-- **Tooltips:** Accessible descriptions are provided for screen readers.
-- **Table Accessibility:** Table and table headers are focusable and have accessible descriptions.
+- **Accessible Labels:** All input fields and controls have associated labels using `setLabelFor` or equivalent.
+- **Accessible Names & Descriptions:** All controls provide accessible names and descriptions, with tooltips and context for screen readers.
+- **Table Accessibility:** Tables and headers are focusable, described, and navigable by screen readers.
+- **Feedback & Errors:** All feedback, status messages, and errors are announced to screen readers.
 
-### 4. Focus Management
+### 4. Visual Accessibility
 
-- **Custom Focus Traversal Policy:** Logical tab order is enforced using a focus traversal policy.
-- **Focusable Components:** All major components are explicitly set as focusable.
+- **High Contrast & Color-Blind Themes:** Multiple themes are available, including high-contrast and color-blind-friendly options.
+- **Resizable Text & UI:** The application supports system font scaling and high-DPI displays.
+- **Clear Focus Indicators:** All focusable elements have visible focus indicators.
+
+### 5. Multi-Language & Localization
+
+- **Language Switching:** Users can switch between English and Spanish from the menu.
+- **Accessible Language Files:** All UI strings are externalized in resource bundles for easy localization.
+
+### 6. Help & Documentation
+
+- **Help Menu:** Accessible via keyboard and menu bar, listing all shortcuts and accessibility features.
+- **Context-Sensitive Help:** Tooltips and help dialogs are available for all major features.
 
 ---
 
-## Summary Table of Accessibility Features
+## Accessibility Testing
+
+### Manual Testing
+
+- **Keyboard-Only Navigation:** Verified that all features are usable without a mouse.
+- **Screen Reader Testing:** Tested with NVDA and VoiceOver to ensure all controls are announced and usable.
+- **Color Contrast:** All themes meet or exceed WCAG 2.1 AA contrast requirements.
+- **Dialog & Focus Management:** All dialogs trap focus and can be closed with Esc.
+
+### Automated Testing
+
+- **Build Integration:** Accessibility linting and static analysis can be integrated into Maven, Gradle, or Ant builds using tools like [axe Accessibility Engine for Java](https://github.com/dequelabs/axe-core).
+
+---
+
+## Accessibility Summary Table
 
 | Feature                       | Status         | Notes                                                      |
 |-------------------------------|---------------|------------------------------------------------------------|
 | Tab Navigation                | ✅ Complete    | All interactive elements are tab-selectable                |
-| Arrow Key Navigation          | ✅ Complete    | Table and dropdowns support arrow keys                     |
+| Arrow Key Navigation          | ✅ Complete    | Table, dropdowns, and menus support arrow keys             |
 | Spacebar/Enter Activation     | ✅ Complete    | All buttons, checkboxes, menu items                        |
 | Global Shortcuts              | ✅ Complete    | Ctrl + ., Ctrl + Enter, Ctrl + G, etc.                     |
-| Help Menu                     | ✅ Complete    | Accessible via menu bar and Ctrl + .                       |
+| Help Menu & Dialog            | ✅ Complete    | Accessible via menu bar and Ctrl + .                       |
 | Accessible Labels             | ✅ Complete    | All fields have associated labels                          |
 | Accessible Names/Descriptions | ✅ Complete    | Provided for all fields and buttons                        |
 | Screen Reader Support         | ✅ Complete    | AccessibleContext and tooltips used                        |
 | Table Accessibility           | ✅ Complete    | Table and headers are focusable and described              |
 | Focus Traversal Policy        | ✅ Complete    | Logical tab order enforced                                 |
+| High Contrast/Color Themes    | ✅ Complete    | Multiple accessible themes available                       |
+| Multi-Language Support        | ✅ Complete    | English and Spanish, easily extensible                     |
+| Dialog Focus Trap             | ✅ Complete    | All dialogs trap focus and support Esc to close            |
 
 ---
 
-## Recommendations for Further Improvement
-
-- **Testing:** Continue testing with keyboard-only navigation and popular screen readers (NVDA, JAWS, VoiceOver).
-- **User Feedback:** Gather feedback from users with disabilities to identify any remaining barriers.
-- **Documentation:** Ensure all accessibility features and shortcuts are documented for end users.
-
----
-
-## Example Keyboard Shortcuts (As Shown in Help Dialog)
+## Example Keyboard Shortcuts
 
 | Action                        | Shortcut         |
 |-------------------------------|------------------|
@@ -84,8 +103,20 @@ This document provides an updated accessibility analysis of the `LedgerGUI.java`
 
 ---
 
+## Recommendations for Further Improvement
+
+1. **Continuous User Testing:** Regularly test with users who rely on assistive technologies (screen readers, keyboard-only users, users with low vision).
+2. **Expand Automated Testing:** Integrate automated accessibility checks into the CI/CD pipeline.
+3. **Documentation:** Continue to update user-facing documentation with accessibility features and shortcuts.
+4. **Feedback Loop:** Encourage feedback from users with disabilities to identify and address any remaining barriers.
+5. **Localization:** Expand language support as needed and ensure all translations are accessible.
+
+---
+
 ## Conclusion
 
-The `LedgerGUI.java` interface now meets modern accessibility standards for keyboard and screen reader users. All interactive elements are navigable and operable via keyboard, and a global help system for shortcuts is available. These improvements ensure a more inclusive experience for all users.
+Braille Transcription Ledger is built to be accessible for all users, including those with disabilities. The application meets or exceeds modern accessibility standards for desktop software, with robust support for keyboard navigation, screen readers, high-contrast themes, and multi-language use. Ongoing testing and user feedback are encouraged to maintain and improve accessibility as the application evolves.
 
-**For questions or further accessibility enhancements, consult the development team or accessibility experts.**
+For questions, suggestions, or to report accessibility issues, please open an issue on GitHub or contact the project maintainer.
+
+---

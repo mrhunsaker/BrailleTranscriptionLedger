@@ -1,21 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="BrailleTranscriptionLedger" default="run" basedir=".">
+<project name="BrailleTranscriptionLedger" default="run" basedir="."
+    xmlns:ivy="antlib:org.apache.ivy.ant">
 
     <!-- Set global properties -->
     <property name="src.dir" value="src/main/java"/>
     <property name="build.dir" value="build"/>
     <property name="dist.dir" value="dist"/>
-    <property name="main-class" value="LedgerGUI"/>
+    <property name="main-class" value="BrailleTranscriptionLedger.LedgerGUI"/>
     <property name="lib.dir" value="lib"/>
+    <property name="ivy.jar" value="lib/ivy-2.5.1.jar"/>
+
+    <!-- Ivy Ant tasks using antlib namespace -->
+    <taskdef uri="antlib:org.apache.ivy.ant" resource="org/apache/ivy/ant/antlib.xml" classpath="${ivy.jar}"/>
+
+    <!-- Ivy settings -->
+    <target name="ivy-init">
+        <ivy:settings/>
+    </target>
+
+    <!-- Resolve dependencies and retrieve them to lib/ -->
+    <target name="resolve" depends="ivy-init">
+        <ivy:resolve/>
+        <ivy:retrieve pattern="${lib.dir}/[artifact]-[revision](-[classifier])-[type].[ext]"/>
+    </target>
 
     <!-- Create build and dist directories -->
     <target name="init">
         <mkdir dir="${build.dir}"/>
         <mkdir dir="${dist.dir}"/>
+        <mkdir dir="${lib.dir}"/>
+    </target>
+
+    <!-- Copy resources -->
+    <target name="copy-resources">
+        <copy todir="${build.dir}">
+            <fileset dir="src/main/resources"/>
+        </copy>
     </target>
 
     <!-- Compile source files -->
-    <target name="compile" depends="init">
+    <target name="compile" depends="init,resolve,copy-resources">
         <javac srcdir="${src.dir}" destdir="${build.dir}" includeantruntime="false">
             <classpath>
                 <fileset dir="${lib.dir}">
@@ -25,12 +49,20 @@
         </javac>
     </target>
 
-    <!-- Create JAR file -->
+    <!-- Create JAR file with dynamic manifest classpath -->
     <target name="jar" depends="compile">
+        <path id="jar.classpath">
+            <fileset dir="${lib.dir}">
+                <include name="**/*.jar"/>
+            </fileset>
+        </path>
+        <manifestclasspath property="manifest.classpath" jarfile="${dist.dir}/BrailleTranscriptionLedger.jar">
+            <classpath refid="jar.classpath"/>
+        </manifestclasspath>
         <jar destfile="${dist.dir}/BrailleTranscriptionLedger.jar" basedir="${build.dir}">
             <manifest>
                 <attribute name="Main-Class" value="${main-class}"/>
-                <attribute name="Class-Path" value="lib/sqlite-jdbc.jar lib/flatlaf.jar lib/flatlaf-intellij-themes.jar lib/itextpdf.jar"/>
+                <attribute name="Class-Path" value="${manifest.classpath}"/>
             </manifest>
         </jar>
     </target>
@@ -45,4 +77,13 @@
             </classpath>
         </java>
     </target>
+
+    <!-- Clean build, dist, and lib directories -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+        <!-- Uncomment the next line if you want to clean downloaded jars -->
+        <!-- <delete dir="${lib.dir}"/> -->
+    </target>
+
 </project>

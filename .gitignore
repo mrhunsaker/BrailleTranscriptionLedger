@@ -1,6 +1,36 @@
 # Compiled class file
 *.class
 
+# IDE/project files
+.idea/
+.vscode/
+*.iml
+nbproject/
+.classpath
+.project
+.settings/
+
+# Build output
+/target/
+/build/
+/out/
+
+# Gradle
+.gradle/
+
+# Ant
+build/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor swap files
+*~
+*.swp
+*.swo
+
 # Log file
 *.log
 
@@ -22,3 +52,9 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Do not sync .json files of the database to avoid potential HIPAA or FERPA issues
+*.json
+*.db
+*.mv.db
+*.trace.db
