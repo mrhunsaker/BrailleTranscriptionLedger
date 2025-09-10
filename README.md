@@ -142,6 +142,52 @@ Braille Transcription Ledger is a desktop application designed to help teachers 
 
 ---
 
+## Database location & logging
+
+The application uses an embedded H2 database by default. You can control where the database file is stored using one of the following methods (higher precedence listed first):
+
+- Command-line: pass `--dbpath=<path>` (path without the `.db` suffix). Example:
+
+    ```
+    java -jar target/BrailleTranscriptionLedger.jar --dbpath=/path/to/custom/ledger
+    ```
+
+- Environment variable: set `LEDGER_DB_PATH` to the base path (no `.db` suffix).
+
+- `config.properties` file in the program root with the key `db.path=/full/path/to/ledger`.
+
+- User home: the app will prefer `~/.brailleledger/ledger` if present.
+
+- `app_home`: if an `app_home/ledger` or `app_home/ledger.db` exists in the program root, it will be used.
+
+- Default: `./ledger` in the current working directory.
+
+Examples:
+
+- Set via environment (Windows PowerShell):
+
+    ```powershell
+    $env:LEDGER_DB_PATH = 'C:\\Users\\You\\.brailleledger\\ledger'
+    java -jar target/BrailleTranscriptionLedger.jar
+    ```
+
+- Use the CLI flag to override everything else:
+
+    ```
+    java -jar target/BrailleTranscriptionLedger.jar --dbpath=C:\\data\\myledger
+    ```
+
+Logging level can be controlled with the `LOG_LEVEL` system property or environment variable used at startup. Typical values: `DEBUG`, `INFO`, `WARN`, `ERROR`.
+
+Example (run with INFO level):
+
+```text
+java -DLOG_LEVEL=INFO -jar target/BrailleTranscriptionLedger.jar
+```
+
+This README section documents the runtime precedence and how to override the database and logging settings for testing or deployment.
+
+
 ## JSON Configuration Files
 
 **Location:** Change the names of the `.json.txt` files in /json_files to remove the .txt extension. They are named this way to protect sensitive information from being exposed accidentally online as the .gitignore file excludes uploading .json files.
