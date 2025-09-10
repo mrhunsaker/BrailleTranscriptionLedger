@@ -1,7 +1,7 @@
-BrailleTranscriptionLedger/LedgerGUI$2.class
-BrailleTranscriptionLedger/LedgerGUI$HeaderFooterPageEvent.class
-BrailleTranscriptionLedger/LedgerGUI$3.class
-BrailleTranscriptionLedger/LedgerGUI$1.class
-BrailleTranscriptionLedger/LedgerGUI.class
-BrailleTranscriptionLedger/Logger.class
-BrailleTranscriptionLedger/Logger$LogLevel.class
+BrailleTranscriptionLedger\LedgerGUI$1.class
+BrailleTranscriptionLedger\Logger$LogLevel.class
+BrailleTranscriptionLedger\Logger.class
+BrailleTranscriptionLedger\LedgerGUI.class
+BrailleTranscriptionLedger\LedgerGUI$3.class
+BrailleTranscriptionLedger\LedgerGUI$2.class
+BrailleTranscriptionLedger\LedgerGUI$HeaderFooterPageEvent.class

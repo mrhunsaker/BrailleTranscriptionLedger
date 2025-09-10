@@ -115,28 +115,22 @@ Braille Transcription Ledger is a desktop application designed to help teachers 
 
 1. Ensure you have `build.xml` in your project folder. The provided `build.xml` supports dependency management via Ivy, compiles sources, copies resources, and creates a runnable JAR in the `dist` directory.
 
-2. **Download Apache Ivy 2.5.1:**  
-   The Ant build requires `ivy-2.5.1.jar` to be present in the `lib` directory. This file is not included in the repository because `.gitignore` excludes uploading `.jar` files to GitHub.
+2. The Ant build will attempt to download an Ivy jar into `lib/ivy-2.5.1.jar` if it is not present. If your environment blocks downloads, place a compatible Ivy jar at `lib/ivy-2.5.1.jar` first.
 
-   - Download Ivy 2.5.1 from the official Apache website:  
-     [https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.1/ivy-2.5.1.jar](https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.1/ivy-2.5.1.jar)
-   - Place the downloaded `ivy-2.5.1.jar` file in the `lib` folder at the root of your project.
+3. Resolve dependencies and build with Ant (PowerShell example):
 
-3. Open a terminal or command prompt in the project folder.
+```powershell
+ant resolve
+ant assemble
+ant run
+```
 
-4. Run:
-    ```
-    ant jar
-    ```
-    This will:
-    - Download dependencies to `lib/`
-    - Compile sources and copy resources to `build/`
-    - Create the runnable JAR at `dist/BrailleTranscriptionLedger.jar`
+Notes:
 
-5. To run the program:
-    ```
-    java -jar dist/BrailleTranscriptionLedger.jar
-    ```
+- The `resolve` target retrieves third-party jars into `lib/` using Ivy and the included `ivysettings.xml`.
+- The `assemble` target compiles the sources and creates `dist/BrailleTranscriptionLedger.jar`.
+- The project's `pom.xml` (Maven) is the authoritative source for dependency versions. Keep Ivy dependencies in `ivy.xml` in sync if you change versions in the POM.
+- If you prefer Ivy settings customization, edit `ivysettings.xml` to add company repositories or mirrors.
 
 **Note:** All build systems ensure that resources (such as language `.properties` files) are included in the JAR, and dependencies are resolved automatically. If you encounter issues, ensure your Java version is 17 or newer and your build tool is up to date.
 

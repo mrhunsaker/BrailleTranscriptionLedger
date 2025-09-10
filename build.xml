@@ -8,20 +8,30 @@
     <property name="dist.dir" value="dist"/>
     <property name="main-class" value="BrailleTranscriptionLedger.LedgerGUI"/>
     <property name="lib.dir" value="lib"/>
+    <!-- Path to a local Ivy jar if offline; resolve target will populate lib/ via Ivy retrieve -->
     <property name="ivy.jar" value="lib/ivy-2.5.1.jar"/>
 
-    <!-- Ivy Ant tasks using antlib namespace -->
-    <taskdef uri="antlib:org.apache.ivy.ant" resource="org/apache/ivy/ant/antlib.xml" classpath="${ivy.jar}"/>
+    <!-- Ensure Ivy runtime is available locally (downloads Ivy jar if not present) -->
+    <target name="ensure-ivy">
+        <mkdir dir="${lib.dir}"/>
+        <!-- If ivy.jar is missing, download it from Maven Central -->
+        <condition property="ivy.exists">
+            <available file="${ivy.jar}"/>
+        </condition>
+        <get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.1/ivy-2.5.1.jar" dest="${ivy.jar}" skipexisting="true"/>
+    </target>
 
-    <!-- Ivy settings -->
-    <target name="ivy-init">
-        <ivy:settings/>
+    <!-- Ivy settings: define the Ivy Ant tasks after ensuring the ivy jar is present -->
+    <target name="ivy-init" depends="ensure-ivy">
+        <taskdef uri="antlib:org.apache.ivy.ant" resource="org/apache/ivy/ant/antlib.xml" classpath="${ivy.jar}"/>
+        <ivy:settings file="ivysettings.xml"/>
     </target>
 
     <!-- Resolve dependencies and retrieve them to lib/ -->
     <target name="resolve" depends="ivy-init">
         <ivy:resolve/>
-        <ivy:retrieve pattern="${lib.dir}/[artifact]-[revision](-[classifier])-[type].[ext]"/>
+        <!-- Retrieve jars into lib/ using a predictable naming pattern -->
+        <ivy:retrieve pattern="${lib.dir}/[organisation]/[module]-[artifact]-[revision].[ext]"/>
     </target>
 
     <!-- Create build and dist directories -->
@@ -67,10 +77,15 @@
         </jar>
     </target>
 
+    <!-- Assemble (alias for jar) -->
+    <target name="assemble" depends="jar"/>
+
     <!-- Run the application -->
-    <target name="run" depends="jar">
-        <java jar="${dist.dir}/BrailleTranscriptionLedger.jar" fork="true">
+    <!-- Run the application using the created dist JAR and lib classpath -->
+    <target name="run" depends="assemble">
+        <java classname="${main-class}" fork="true">
             <classpath>
+                <pathelement location="${dist.dir}/BrailleTranscriptionLedger.jar"/>
                 <fileset dir="${lib.dir}">
                     <include name="**/*.jar"/>
                 </fileset>

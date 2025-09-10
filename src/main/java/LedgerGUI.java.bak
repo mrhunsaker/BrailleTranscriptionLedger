@@ -32,10 +32,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.text.DecimalFormat;
@@ -44,7 +40,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import java.awt.Desktop;
 import javax.accessibility.AccessibleContext;
 import javax.swing.*;
 import javax.swing.plaf.FontUIResource;
@@ -54,9 +49,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// Logback classes used for dynamic log level changes
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 
 /**
  * The `LedgerGUI` class is a Swing-based application that provides a graphical user interface for managing a ledger.
@@ -225,7 +217,7 @@ public class LedgerGUI extends JFrame {
     /**
      * Font used for help dialogs to improve accessibility.
      */
-    private Font helpDialogFont = new Font("SansSerif", Font.PLAIN, 16);
+    private Font helpDialogFont = new Font("SansSerif", Font.PLAIN, 32);
 
     // Menu components promoted to fields for accessibility/localization
     /**
@@ -313,7 +305,9 @@ public class LedgerGUI extends JFrame {
     /**
      * A panel for Project Status.
      */
-    private JPanel projectStatusPanel = new JPanel(new GridBagLayout());
+    private JPanel projectStatusPanel = new JPanel(
+        new GridLayout(0, 2, 10, 10)
+    );
 
     /**
      * A text area for entering notes.
@@ -376,43 +370,17 @@ public class LedgerGUI extends JFrame {
     /**
      * The URL for connecting to the H2 embedded database.
      */
-    // Database URL - computed at runtime so app_home move is respected
-    private String DB_URL;
-
-    /**
-     * Test hook: when set, the code will treat this path as the application root
-     * (used by tests to simulate different working directories).
-     */
-    public static String TEST_ROOT_OVERRIDE = null;
-
-    /**
-     * Non-modal status bar label shown at the bottom of the main frame.
-     */
-    private javax.swing.JLabel statusBar;
+    private static final String DB_URL = "jdbc:h2:./ledger;AUTO_SERVER=TRUE";
 
     /**
      * Constructs a new `LedgerGUI` instance and initializes the application's components.
      */
     public LedgerGUI() {
-        this(new String[0]);
-    }
-
-    /**
-     * Constructor that accepts command-line args so DB path can be configured.
-    *
-    * @param args Command-line arguments passed to the program. May include
-    *             options such as {@code --dbpath=<path>} or {@code --loglevel=<level>}.
-     */
-    public LedgerGUI(String[] args) {
-    // Resolve DB base path using precedence rules
-    String dbBase = resolveDbBasePath(args);
-    DB_URL = "jdbc:h2:" + dbBase + ";AUTO_SERVER=TRUE";
-    logger.info("Connecting to database at URL: {}", DB_URL);
         // Set global font for all UI components to 32pt before creating any components
         FontUIResource globalFont = new FontUIResource(
             "SansSerif",
             Font.PLAIN,
-            16
+            32
         );
         for (
             Enumeration<Object> keys = UIManager.getDefaults().keys();
@@ -439,54 +407,9 @@ public class LedgerGUI extends JFrame {
             (screenWidth - appWidth) / 2,
             (screenHeight - appHeight) / 2
         );
-        // Determine whether to start maximized. Precedence:
-        // 1) CLI args: --no-maximize or --start-maximize
-        // 2) config.properties -> window.maximized (true/false)
-        // 3) default: true (maximize)
-        boolean startMaximized = true; // default
-        boolean seenNo = false;
-        boolean seenYes = false;
-        if (args != null) {
-            for (String a : args) {
-                if ("--no-maximize".equals(a)) seenNo = true;
-                if ("--start-maximize".equals(a)) seenYes = true;
-            }
-        }
-        if (seenNo) {
-            startMaximized = false;
-        } else if (seenYes) {
-            startMaximized = true;
-        } else {
-            // read config.properties if present
-            try {
-                Path cfg = Paths.get("config.properties");
-                if (Files.exists(cfg)) {
-                    Properties p = new Properties();
-                    try (java.io.InputStream in = Files.newInputStream(cfg)) {
-                        p.load(in);
-                        String val = p.getProperty("window.maximized");
-                        if (val != null && !val.isBlank()) {
-                            startMaximized = Boolean.parseBoolean(val.trim());
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // ignore and use default
-            }
-        }
-        if (startMaximized) setExtendedState(getExtendedState() | JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    JTabbedPane tabbedPane = new JTabbedPane();
-    // Use scrollable tab layout so a scrollbar (scroll buttons) appears
-    // when there are more tabs than fit the available width.
-    tabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-    // Keep a reference to the main tabbed pane
-    mainTabs = tabbedPane;
-    setLayout(new BorderLayout());
-    // initialize non-modal status bar
-    statusBar = new javax.swing.JLabel(" ");
-    statusBar.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 6, 4, 6));
-    getContentPane().add(statusBar, java.awt.BorderLayout.SOUTH);
+        JTabbedPane tabbedPane = new JTabbedPane();
+        setLayout(new BorderLayout());
 
         // Create MenuBar
         menuBar = new JMenuBar();
@@ -498,11 +421,11 @@ public class LedgerGUI extends JFrame {
         // Ensure table headers and tooltips use global font
         UIManager.put(
             "TableHeader.font",
-            new FontUIResource("SansSerif", Font.PLAIN, 16)
+            new FontUIResource("SansSerif", Font.PLAIN, 32)
         );
         UIManager.put(
             "ToolTip.font",
-            new FontUIResource("SansSerif", Font.PLAIN, 16)
+            new FontUIResource("SansSerif", Font.PLAIN, 32)
         );
 
         // Keyboard Shortcuts menu item
@@ -620,13 +543,8 @@ public class LedgerGUI extends JFrame {
             themeMenu.add(item);
         }
 
-    // Preferences menu item (allows editing config.properties)
-    JMenuItem preferencesMenuItem = new JMenuItem("Preferences");
-    preferencesMenuItem.setFocusable(true);
-    preferencesMenuItem.addActionListener(e -> showPreferencesDialog());
-    fileMenu.add(preferencesMenuItem);
-    fileMenu.add(aboutMenuItem);
-    fileMenu.add(exitMenuItem);
+        fileMenu.add(aboutMenuItem);
+        fileMenu.add(exitMenuItem);
 
         // Help menu with keyboard shortcuts
         JMenuItem shortcutsMenuItem = new JMenuItem(
@@ -662,8 +580,8 @@ public class LedgerGUI extends JFrame {
         // Load persisted font preferences
         // Input Panel
 
-    ProjectSetup = new JPanel(new GridBagLayout());
-    ProjectSetup.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        ProjectSetup = new JPanel(new GridLayout(0, 2, 10, 10));
+        ProjectSetup.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
         ProjectTracking.setBorder(
@@ -672,9 +590,22 @@ public class LedgerGUI extends JFrame {
 
         // Group date field and help button in a panel
         JPanel trackingDatePanel = new JPanel(new BorderLayout());
-        dateField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        dateField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         trackingDatePanel.add(dateField, BorderLayout.CENTER);
-    // date tooltip is set on the date field itself
+        JButton trackingDateHelpBtn = new JButton("?");
+        trackingDateHelpBtn.setFont(dateField.getFont());
+        trackingDateHelpBtn.setPreferredSize(
+            new Dimension(48, dateField.getPreferredSize().height)
+        );
+        trackingDateHelpBtn.setToolTipText(getString("date_tooltip"));
+        trackingDateHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("date_label"),
+                new JLabel(getString("date_tooltip"))
+            );
+        });
+        trackingDatePanel.add(trackingDateHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectTracking,
             "<html>Date: <br><i>(YYYY-MM-DD)</i></html>",
@@ -685,15 +616,49 @@ public class LedgerGUI extends JFrame {
         dateField
             .getAccessibleContext()
             .setAccessibleDescription(getString("date_accessible"));
-    // Project Name input panel for Project Setup
+        JButton dateHelpBtn = new JButton("?");
+        dateHelpBtn.setFont(dateField.getFont());
+        dateHelpBtn.setPreferredSize(
+            new Dimension(48, dateField.getPreferredSize().height)
+        );
+        dateHelpBtn.setToolTipText(getString("date_tooltip"));
+        dateHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("date_label"),
+                new JLabel(getString("date_tooltip"))
+            );
+        });
+        // Project Name input panel for Project Setup
         setupProjectNameTextField = new JTextField();
         setupProjectNameTextField.setFont(
-            new Font("SansSerif", Font.PLAIN, 16)
+            new Font("SansSerif", Font.PLAIN, 32)
         );
         setupProjectNameTextField.setToolTipText("Enter a new Project Name");
 
-    JPanel setupProjectNamePanel = new JPanel(new BorderLayout());
-    setupProjectNamePanel.add(setupProjectNameTextField, BorderLayout.CENTER);
+        JButton setupProjectNameHelpBtn = new JButton("?");
+        setupProjectNameHelpBtn.setFont(setupProjectNameTextField.getFont());
+        setupProjectNameHelpBtn.setPreferredSize(
+            new Dimension(
+                48,
+                setupProjectNameTextField.getPreferredSize().height
+            )
+        );
+        setupProjectNameHelpBtn.setToolTipText(getString("project_name_help"));
+        setupProjectNameHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_label"),
+                new JLabel(getString("project_name_help"))
+            );
+        });
+
+        JPanel setupProjectNamePanel = new JPanel(new BorderLayout());
+        setupProjectNamePanel.add(
+            setupProjectNameTextField,
+            BorderLayout.CENTER
+        );
+        setupProjectNamePanel.add(setupProjectNameHelpBtn, BorderLayout.EAST);
 
         addLabelAndField(
             ProjectSetup,
@@ -703,7 +668,7 @@ public class LedgerGUI extends JFrame {
 
         JPanel datePanel = new JPanel(new BorderLayout());
         datePanel.add(dateField, BorderLayout.CENTER);
-    // date tooltip shown on field itself
+        datePanel.add(dateHelpBtn, BorderLayout.EAST);
 
         addLabelAndField(
             ProjectSetup,
@@ -720,7 +685,7 @@ public class LedgerGUI extends JFrame {
         );
         String[] leaOptions = loadOptionsFromFile(
             "json_files/LEAs.json",
-            "LEAs"
+            "teachers"
         );
         String[] tviOptions = loadOptionsFromFile(
             "json_files/tvis.json",
@@ -728,15 +693,27 @@ public class LedgerGUI extends JFrame {
         );
         String[] mediaTypeOptions = { "Braille", "Large Print", "Audio" };
         studentField = new JComboBox<>(studentOptions);
-        studentField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    // Ensure compact height for dropdowns
-    setFixedHeight(studentField, 28);
+        studentField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         studentField.setToolTipText(getString("student_tooltip"));
         studentField
             .getAccessibleContext()
             .setAccessibleDescription(getString("student_accessible"));
+        JButton studentHelpBtn = new JButton("?");
+        studentHelpBtn.setFont(studentField.getFont());
+        studentHelpBtn.setPreferredSize(
+            new Dimension(48, studentField.getPreferredSize().height)
+        );
+        studentHelpBtn.setToolTipText(getString("student_tooltip"));
+        studentHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("student_label"),
+                new JLabel(getString("student_tooltip"))
+            );
+        });
         JPanel studentPanel = new JPanel(new BorderLayout());
         studentPanel.add(studentField, BorderLayout.CENTER);
+        studentPanel.add(studentHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectSetup,
             "<html>Student <br> <i>Select Student from dropdown list</i></html>",
@@ -748,14 +725,27 @@ public class LedgerGUI extends JFrame {
             "subjects"
         );
         subjectField = new JComboBox<>(subjectOptions);
-        subjectField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    setFixedHeight(subjectField, 28);
+        subjectField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         subjectField.setToolTipText(getString("subject_tooltip"));
         subjectField
             .getAccessibleContext()
             .setAccessibleDescription(getString("subject_accessible"));
+        JButton subjectHelpBtn = new JButton("?");
+        subjectHelpBtn.setFont(subjectField.getFont());
+        subjectHelpBtn.setPreferredSize(
+            new Dimension(48, subjectField.getPreferredSize().height)
+        );
+        subjectHelpBtn.setToolTipText(getString("subject_tooltip"));
+        subjectHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("subject_label"),
+                new JLabel(getString("subject_tooltip"))
+            );
+        });
         JPanel subjectPanel = new JPanel(new BorderLayout());
         subjectPanel.add(subjectField, BorderLayout.CENTER);
+        subjectPanel.add(subjectHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             ProjectSetup,
             "<html>Academic Subject<br><i>Select Subject from Dropdown List</i></html>",
@@ -769,16 +759,31 @@ public class LedgerGUI extends JFrame {
         schoolField = new JComboBox<>(
             loadOptionsFromFile("json_files/schools.json", "schools")
         );
-        schoolField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    setFixedHeight(schoolField, 28);
+        schoolField.setFont(new Font("SansSerif", Font.PLAIN, 32));
 
         schoolField.setToolTipText(getString("school_tooltip"));
         schoolField
             .getAccessibleContext()
             .setAccessibleDescription(getString("school_accessible"));
-        // Group school field in a panel (help button removed; tooltip kept on the field)
+        JButton schoolHelpBtn = new JButton("?");
+        schoolHelpBtn.setToolTipText(getString("school_tooltip"));
+        schoolHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("school_label"),
+                new JLabel(getString("school_tooltip"))
+            );
+            announceToScreenReader(getString("school_tooltip"));
+        });
+        // Group school field and help button in a panel
         JPanel schoolPanel = new JPanel(new BorderLayout());
         schoolPanel.add(schoolField, BorderLayout.CENTER);
+        // Set font and preferred size for schoolHelpBtn to match other components
+        schoolHelpBtn.setFont(schoolField.getFont());
+        schoolHelpBtn.setPreferredSize(
+            new Dimension(48, schoolField.getPreferredSize().height)
+        );
+        schoolPanel.add(schoolHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "School", schoolPanel);
 
         ProjectTracking = new JPanel(new GridLayout(0, 2, 10, 10));
@@ -802,7 +807,7 @@ public class LedgerGUI extends JFrame {
                 proofStatusField.getItemCount()
             );
         }
-        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 32));
 
         // --- Language selector menu ---
         // Duplicate language menu setup removed to prevent repeated menu and items
@@ -810,8 +815,22 @@ public class LedgerGUI extends JFrame {
         proofStatusField
             .getAccessibleContext()
             .setAccessibleDescription(getString("proof_status_help"));
+        JButton proofStatusHelpBtn = new JButton("?");
+        proofStatusHelpBtn.setFont(proofStatusField.getFont());
+        proofStatusHelpBtn.setPreferredSize(
+            new Dimension(48, proofStatusField.getPreferredSize().height)
+        );
+        proofStatusHelpBtn.setToolTipText(getString("proof_status_help"));
+        proofStatusHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("proof_status_help"),
+                new JLabel(getString("proof_status_help"))
+            );
+        });
         JPanel proofStatusPanel = new JPanel(new BorderLayout());
         proofStatusPanel.add(proofStatusField, BorderLayout.CENTER);
+        proofStatusPanel.add(proofStatusHelpBtn, BorderLayout.EAST);
         addLabelAndField(projectStatusPanel, "Proof Status", proofStatusPanel);
         //addLabelAndField(inputPanel, "Delivery Mode", deliveryModeField);
 
@@ -824,28 +843,53 @@ public class LedgerGUI extends JFrame {
             ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         );
         JScrollPane teacherScrollPane = new JScrollPane(teacherField);
-    teacherScrollPane.setPreferredSize(new Dimension(200, 100));
-    // JList inside JScrollPane - constrain visible row height
-    teacherField.setFixedCellHeight(18);
+        teacherScrollPane.setPreferredSize(new Dimension(200, 100));
         teacherScrollPane.setToolTipText(getString("teacher_tooltip"));
         teacherScrollPane
             .getAccessibleContext()
             .setAccessibleDescription(getString("teacher_accessible"));
+        JButton teacherHelpBtn = new JButton("?");
+        teacherHelpBtn.setFont(teacherScrollPane.getFont());
+        teacherHelpBtn.setPreferredSize(
+            new Dimension(48, teacherScrollPane.getPreferredSize().height)
+        );
+        teacherHelpBtn.setToolTipText(getString("teacher_tooltip"));
+        teacherHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("teacher_label"),
+                new JLabel(getString("teacher_tooltip"))
+            );
+        });
         JPanel teacherPanel = new JPanel(new BorderLayout());
         teacherPanel.add(teacherScrollPane, BorderLayout.CENTER);
+        teacherPanel.add(teacherHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "Teachers", teacherPanel);
 
         logger.info("Initializing LEA field...");
         leaField = new JComboBox<>(leaOptions);
-        leaField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        leaField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         leaField.setPreferredSize(new Dimension(200, 28));
-    setFixedHeight(leaField, 28);
         leaField.setToolTipText(getString("lea_tooltip"));
         leaField
             .getAccessibleContext()
             .setAccessibleDescription(getString("lea_accessible"));
+        JButton leaHelpBtn = new JButton("?");
+        leaHelpBtn.setFont(leaField.getFont());
+        leaHelpBtn.setPreferredSize(
+            new Dimension(48, leaField.getPreferredSize().height)
+        );
+        leaHelpBtn.setToolTipText(getString("lea_tooltip"));
+        leaHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("lea_label"),
+                new JLabel(getString("lea_tooltip"))
+            );
+        });
         JPanel leaPanel = new JPanel(new BorderLayout());
         leaPanel.add(leaField, BorderLayout.CENTER);
+        leaPanel.add(leaHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "LEA", leaPanel);
 
         logger.info("Initializing TVIs field...");
@@ -857,14 +901,27 @@ public class LedgerGUI extends JFrame {
             ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
         );
         JScrollPane tviScrollPane = new JScrollPane(tviField);
-    tviScrollPane.setPreferredSize(new Dimension(200, 100));
-    tviField.setFixedCellHeight(18);
+        tviScrollPane.setPreferredSize(new Dimension(200, 100));
         tviScrollPane.setToolTipText(getString("tvi_tooltip"));
         tviScrollPane
             .getAccessibleContext()
             .setAccessibleDescription(getString("tvi_accessible"));
+        JButton tviHelpBtn = new JButton("?");
+        tviHelpBtn.setFont(tviScrollPane.getFont());
+        tviHelpBtn.setPreferredSize(
+            new Dimension(48, tviScrollPane.getPreferredSize().height)
+        );
+        tviHelpBtn.setToolTipText(getString("tvi_tooltip"));
+        tviHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("tvi_label"),
+                new JLabel(getString("tvi_tooltip"))
+            );
+        });
         JPanel tviPanel = new JPanel(new BorderLayout());
         tviPanel.add(tviScrollPane, BorderLayout.CENTER);
+        tviPanel.add(tviHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "TVIs", tviPanel);
         logger.info("Initializing Media Type field...");
         if (mediaTypeField == null) {
@@ -873,28 +930,50 @@ public class LedgerGUI extends JFrame {
         mediaTypeField = new JComboBox<>(
             loadOptionsFromFile("json_files/media_type.json", "media_types")
         );
-        mediaTypeField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    setFixedHeight(mediaTypeField, 28);
+        mediaTypeField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         mediaTypeField.setToolTipText(getString("media_type_tooltip"));
         mediaTypeField
             .getAccessibleContext()
             .setAccessibleDescription(getString("media_type_accessible"));
+        JButton mediaTypeHelpBtn = new JButton("?");
+        mediaTypeHelpBtn.setFont(mediaTypeField.getFont());
+        mediaTypeHelpBtn.setPreferredSize(
+            new Dimension(48, mediaTypeField.getPreferredSize().height)
+        );
+        mediaTypeHelpBtn.setToolTipText(
+            "Get help with selecting the media type."
+        );
+        mediaTypeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Media Type Help", mediaTypeField);
+        });
         JPanel mediaTypePanel = new JPanel(new BorderLayout());
         mediaTypePanel.add(mediaTypeField, BorderLayout.CENTER);
+        mediaTypePanel.add(mediaTypeHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "Media Type", mediaTypePanel);
         logger.info("Initializing Project Type field...");
         projectField = new JComboBox<>(getProjectTypesFromJson());
-        projectField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        projectField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         if (projectField == null) {
             logger.error("Error: Project Type field is null.");
         }
         projectField.setToolTipText(getString("project_tooltip"));
-    setFixedHeight(projectField, 28);
         projectField
             .getAccessibleContext()
             .setAccessibleDescription(getString("project_accessible"));
+        JButton projectHelpBtn = new JButton("?");
+        projectHelpBtn.setFont(projectField.getFont());
+        projectHelpBtn.setPreferredSize(
+            new Dimension(48, projectField.getPreferredSize().height)
+        );
+        projectHelpBtn.setToolTipText(
+            "Get help with selecting the project type."
+        );
+        projectHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Project Type Help", projectField);
+        });
         JPanel projectPanel = new JPanel(new BorderLayout());
         projectPanel.add(projectField, BorderLayout.CENTER);
+        projectPanel.add(projectHelpBtn, BorderLayout.EAST);
         addLabelAndField(ProjectSetup, "Project Type", projectPanel);
         logger.info("Initializing Time field...");
         timeField = new JTextField();
@@ -902,12 +981,21 @@ public class LedgerGUI extends JFrame {
             logger.error("Error: Time field is null.");
         }
         timeField.setToolTipText(getString("time_tooltip"));
-    setFixedHeight(timeField, 28);
         timeField
             .getAccessibleContext()
             .setAccessibleDescription(getString("time_accessible"));
+        JButton timeHelpBtn = new JButton("?");
+        timeHelpBtn.setFont(timeField.getFont());
+        timeHelpBtn.setPreferredSize(
+            new Dimension(48, timeField.getPreferredSize().height)
+        );
+        timeHelpBtn.setToolTipText("Get help with entering the time spent.");
+        timeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Time Help", timeField);
+        });
         JPanel timePanel = new JPanel(new BorderLayout());
         timePanel.add(timeField, BorderLayout.CENTER);
+        timePanel.add(timeHelpBtn, BorderLayout.EAST);
         // Removed duplicate time field from Project Status panel
 
         // Move fields to Project Status Panel
@@ -916,10 +1004,19 @@ public class LedgerGUI extends JFrame {
             logger.error("Error: Updated field is null.");
         }
         updatedField.setPreferredSize(new Dimension(200, 28));
-        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-        setFixedHeight(updatedField, 28);
+        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        JButton updatedHelpBtn = new JButton("?");
+        updatedHelpBtn.setFont(updatedField.getFont());
+        updatedHelpBtn.setPreferredSize(
+            new Dimension(48, updatedField.getPreferredSize().height)
+        );
+        updatedHelpBtn.setToolTipText("Get help with the Updated field.");
+        updatedHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Updated Help", updatedField);
+        });
         JPanel updatedPanel = new JPanel(new BorderLayout());
         updatedPanel.add(updatedField, BorderLayout.CENTER);
+        updatedPanel.add(updatedHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             projectStatusPanel,
             "<html>Updated: <br>(YYYY-MM-DD)</html>",
@@ -927,7 +1024,7 @@ public class LedgerGUI extends JFrame {
         );
         updatedField.setVisible(true); // Ensure visibility
 
-    notesField = new JTextArea(5, 20); // Multiline text area
+        notesField = new JTextArea(5, 20); // Multiline text area
         notesField.setLineWrap(true);
         notesField.setWrapStyleWord(true);
         JScrollPane notesScrollPane = new JScrollPane(notesField);
@@ -936,19 +1033,40 @@ public class LedgerGUI extends JFrame {
         notesScrollPane
             .getAccessibleContext()
             .setAccessibleDescription(getString("notes_accessible"));
+        JButton notesHelpBtn = new JButton("?");
+        notesHelpBtn.setFont(notesScrollPane.getFont());
+        notesHelpBtn.setPreferredSize(
+            new Dimension(48, notesScrollPane.getPreferredSize().height)
+        );
+        notesHelpBtn.setToolTipText("Get help with entering notes.");
+        notesHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Notes Help", notesScrollPane);
+        });
         JPanel notesPanel = new JPanel(new BorderLayout());
         notesPanel.add(notesScrollPane, BorderLayout.CENTER);
+        notesPanel.add(notesHelpBtn, BorderLayout.EAST);
         addLabelAndField(projectStatusPanel, "Notes", notesPanel);
 
-    deliveryModeField.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    JPanel deliveryPanel = new JPanel(new BorderLayout());
-    deliveryPanel.add(deliveryModeField, BorderLayout.CENTER);
-    addLabelAndField(ProjectSetup, "Delivery Mode", deliveryPanel);
+        JButton deliveryHelpBtn = new JButton("?");
+        deliveryHelpBtn.setFont(deliveryModeField.getFont());
+        deliveryHelpBtn.setPreferredSize(
+            new Dimension(48, deliveryModeField.getPreferredSize().height)
+        );
+        deliveryHelpBtn.setToolTipText(
+            "Get help with selecting the delivery mode."
+        );
+        deliveryModeField.setFont(new Font("SansSerif", Font.PLAIN, 32));
+        deliveryHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Delivery Mode Help", deliveryModeField);
+        });
+        JPanel deliveryPanel = new JPanel(new BorderLayout());
+        deliveryPanel.add(deliveryModeField, BorderLayout.CENTER);
+        deliveryPanel.add(deliveryHelpBtn, BorderLayout.EAST);
+        addLabelAndField(ProjectSetup, "Delivery Mode", deliveryPanel);
 
         completeComboBox = new JComboBox<>(new String[] { "No", "Yes" });
         completeComboBox.setSelectedIndex(0); // Default to "No"
-        completeComboBox.setFont(new Font("SansSerif", Font.PLAIN, 16));
-    setFixedHeight(completeComboBox, 28);
+        completeComboBox.setFont(new Font("SansSerif", Font.PLAIN, 32));
         completeComboBox.setToolTipText(
             "Select Yes if the project or task is complete, No otherwise."
         );
@@ -957,14 +1075,22 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription(
                 "Select Yes if the task is complete, No otherwise."
             );
-    JPanel completePanel = new JPanel(new BorderLayout());
-    completePanel.add(completeComboBox, BorderLayout.CENTER);
-    addLabelAndField(projectStatusPanel, "Complete", completePanel);
+        JButton completeHelpBtn = new JButton("?");
+        completeHelpBtn.setFont(completeComboBox.getFont());
+        completeHelpBtn.setPreferredSize(
+            new Dimension(48, completeComboBox.getPreferredSize().height)
+        );
+        completeHelpBtn.setToolTipText("Get help with the Complete field.");
+        completeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(this, "Complete Help", completeComboBox);
+        });
+        JPanel completePanel = new JPanel(new BorderLayout());
+        completePanel.add(completeComboBox, BorderLayout.CENTER);
+        completePanel.add(completeHelpBtn, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Complete", completePanel);
 
-    submitButton = new JButton("  Submit");
-    // Make submit button compact height but keep width
-    setFixedHeight(submitButton, 28);
-    submitButton.setPreferredSize(new Dimension(150, 28));
+        submitButton = new JButton("  Submit");
+        submitButton.setPreferredSize(new Dimension(150, 50));
         submitButton.setMnemonic(KeyEvent.VK_S);
         submitButton.addActionListener(e -> submitData());
         submitButton
@@ -972,9 +1098,8 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription(
                 "Submit the entered data to the database"
             );
-    generatePdfButton = new JButton("Generate PDF Report");
+        generatePdfButton = new JButton("Generate PDF Report");
         generatePdfButton.setMnemonic(KeyEvent.VK_G);
-    setFixedHeight(generatePdfButton, 28);
         generatePdfButton.addActionListener(e -> showDateRangeDialog());
         generatePdfButton
             .getAccessibleContext()
@@ -988,13 +1113,10 @@ public class LedgerGUI extends JFrame {
                 "Generate a PDF report for a specified date range"
             );
 
-    // Place submit button in its own panel at the bottom of the Project Setup scroll area
-    JPanel submitPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-    submitPanel.add(submitButton);
+        ProjectSetup.add(submitButton);
 
         JPanel projectSetupPanel = new JPanel(new BorderLayout());
-        projectSetupPanel.add(ProjectSetup, BorderLayout.CENTER);
-        projectSetupPanel.add(submitPanel, BorderLayout.SOUTH);
+        projectSetupPanel.add(ProjectSetup, BorderLayout.NORTH);
 
         // Table
         tableModel = new DefaultTableModel(
@@ -1074,17 +1196,7 @@ public class LedgerGUI extends JFrame {
         // Drag-and-drop logic can be added here if needed
         filePickerPanel.add(dragDropPanel);
 
-    // Remove help buttons and move their tooltip text to the fields
-    removeHelpButtonsAndMoveTooltips(ProjectSetup);
-    removeHelpButtonsAndMoveTooltips(projectStatusPanel);
-
-    // Wrap the Project Setup panel in a scroll pane so its contents can scroll
-        JScrollPane projectSetupScroll = new JScrollPane(
-            projectSetupPanel,
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        );
-        tabbedPane.addTab("Project Setup", projectSetupScroll);
+        tabbedPane.addTab("Project Setup", projectSetupPanel);
         add(tabbedPane, BorderLayout.CENTER);
 
         initializeDatabase();
@@ -1105,8 +1217,22 @@ public class LedgerGUI extends JFrame {
         projectNameField
             .getAccessibleContext()
             .setAccessibleDescription(getString("project_name_help"));
-    JPanel projectNamePanel = new JPanel(new BorderLayout());
-    projectNamePanel.add(projectNameField, BorderLayout.CENTER);
+        JButton projectNameHelpBtn = new JButton("?");
+        projectNameHelpBtn.setFont(projectNameField.getFont());
+        projectNameHelpBtn.setPreferredSize(
+            new Dimension(48, projectNameField.getPreferredSize().height)
+        );
+        projectNameHelpBtn.setToolTipText(getString("project_name_help"));
+        projectNameHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_name_help"),
+                projectNameField
+            );
+        });
+        JPanel projectNamePanel = new JPanel(new BorderLayout());
+        projectNamePanel.add(projectNameField, BorderLayout.CENTER);
+        projectNamePanel.add(projectNameHelpBtn, BorderLayout.EAST);
 
         refreshProjectNames(); // Now safe to call, projectNameField is initialized
 
@@ -1118,7 +1244,7 @@ public class LedgerGUI extends JFrame {
         addLabelAndField(projectStatusPanel, "Project Name", projectNamePanel);
 
         // Updated field
-        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        updatedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         updatedField.setToolTipText(
             "Enter the last updated date for this project."
         );
@@ -1127,8 +1253,18 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription(
                 "Enter the last updated date for this project."
             );
-    JPanel updatedPanelStatus = new JPanel(new BorderLayout());
-    updatedPanelStatus.add(updatedField, BorderLayout.CENTER);
+        JButton updatedHelpBtnStatus = new JButton("?");
+        updatedHelpBtnStatus.setFont(updatedField.getFont());
+        updatedHelpBtnStatus.setPreferredSize(
+            new Dimension(48, updatedField.getPreferredSize().height)
+        );
+        updatedHelpBtnStatus.setToolTipText("Get help with the Updated field.");
+        updatedHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(this, "Updated Help", updatedField);
+        });
+        JPanel updatedPanelStatus = new JPanel(new BorderLayout());
+        updatedPanelStatus.add(updatedField, BorderLayout.CENTER);
+        updatedPanelStatus.add(updatedHelpBtnStatus, BorderLayout.EAST);
         addLabelAndField(projectStatusPanel, "Updated", updatedPanelStatus);
 
         // Element of Project
@@ -1138,14 +1274,27 @@ public class LedgerGUI extends JFrame {
                 "project_elements"
             )
         );
-    projectElementField.setPreferredSize(new Dimension(200, 28));
-    setFixedHeight(projectElementField, 28);
+        projectElementField.setPreferredSize(new Dimension(200, 28));
         projectElementField.setToolTipText(getString("project_element_help"));
         projectElementField
             .getAccessibleContext()
             .setAccessibleDescription(getString("project_element_help"));
+        JButton projectElementHelpBtn = new JButton("?");
+        projectElementHelpBtn.setFont(projectElementField.getFont());
+        projectElementHelpBtn.setPreferredSize(
+            new Dimension(48, projectElementField.getPreferredSize().height)
+        );
+        projectElementHelpBtn.setToolTipText(getString("project_element_help"));
+        projectElementHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_element_help"),
+                projectElementField
+            );
+        });
         JPanel projectElementPanel = new JPanel(new BorderLayout());
         projectElementPanel.add(projectElementField, BorderLayout.CENTER);
+        projectElementPanel.add(projectElementHelpBtn, BorderLayout.EAST);
         addLabelAndField(
             projectStatusPanel,
             "Element of Project",
@@ -1154,24 +1303,51 @@ public class LedgerGUI extends JFrame {
 
         // Time
         projectTimeField = new JTextField();
-    projectTimeField.setPreferredSize(new Dimension(200, 28));
-    setFixedHeight(projectTimeField, 28);
+        projectTimeField.setPreferredSize(new Dimension(200, 28));
         projectTimeField.setToolTipText(getString("project_time_help"));
         projectTimeField
             .getAccessibleContext()
             .setAccessibleDescription(getString("project_time_help"));
+        JButton projectTimeHelpBtn = new JButton("?");
+        projectTimeHelpBtn.setFont(projectTimeField.getFont());
+        projectTimeHelpBtn.setPreferredSize(
+            new Dimension(48, projectTimeField.getPreferredSize().height)
+        );
+        projectTimeHelpBtn.setToolTipText(getString("project_time_help"));
+        projectTimeHelpBtn.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("project_time_help"),
+                projectTimeField
+            );
+        });
         JPanel projectTimePanel = new JPanel(new BorderLayout());
         projectTimePanel.add(projectTimeField, BorderLayout.CENTER);
+        projectTimePanel.add(projectTimeHelpBtn, BorderLayout.EAST);
         addLabelAndField(projectStatusPanel, "Time (HH:MM)", projectTimePanel);
 
         // Proof Status
-        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        proofStatusField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         proofStatusField.setToolTipText(getString("proof_status_help"));
         proofStatusField
             .getAccessibleContext()
             .setAccessibleDescription(getString("proof_status_help"));
+        JButton proofStatusHelpBtnStatus = new JButton("?");
+        proofStatusHelpBtnStatus.setFont(proofStatusField.getFont());
+        proofStatusHelpBtnStatus.setPreferredSize(
+            new Dimension(48, proofStatusField.getPreferredSize().height)
+        );
+        proofStatusHelpBtnStatus.setToolTipText(getString("proof_status_help"));
+        proofStatusHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(
+                this,
+                getString("proof_status_help"),
+                proofStatusField
+            );
+        });
         JPanel proofStatusPanelStatus = new JPanel(new BorderLayout());
         proofStatusPanelStatus.add(proofStatusField, BorderLayout.CENTER);
+        proofStatusPanelStatus.add(proofStatusHelpBtnStatus, BorderLayout.EAST);
         addLabelAndField(
             projectStatusPanel,
             "Proof Status",
@@ -1180,7 +1356,7 @@ public class LedgerGUI extends JFrame {
 
         // Completed
         completedField = new JComboBox<>(new String[] { "No", "Yes" });
-        completedField.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        completedField.setFont(new Font("SansSerif", Font.PLAIN, 32));
         completedField.setToolTipText(
             "Select Yes if the project is completed, No otherwise."
         );
@@ -1189,81 +1365,41 @@ public class LedgerGUI extends JFrame {
             .setAccessibleDescription(
                 "Select Yes if the project is completed, No otherwise."
             );
-    JPanel completedPanelStatus = new JPanel(new BorderLayout());
-    completedPanelStatus.add(completedField, BorderLayout.CENTER);
-    addLabelAndField(projectStatusPanel, "Completed", completedPanelStatus);
+        JButton completedHelpBtnStatus = new JButton("?");
+        completedHelpBtnStatus.setFont(completedField.getFont());
+        completedHelpBtnStatus.setPreferredSize(
+            new Dimension(48, completedField.getPreferredSize().height)
+        );
+        completedHelpBtnStatus.setToolTipText(
+            "Get help with the Completed field."
+        );
+        completedHelpBtnStatus.addActionListener(e -> {
+            showAccessibleDialog(this, "Completed Help", completedField);
+        });
+        JPanel completedPanelStatus = new JPanel(new BorderLayout());
+        completedPanelStatus.add(completedField, BorderLayout.CENTER);
+        completedPanelStatus.add(completedHelpBtnStatus, BorderLayout.EAST);
+        addLabelAndField(projectStatusPanel, "Completed", completedPanelStatus);
 
-    JButton addTrackingButton = new JButton("Add Tracking Info");
-    setFixedHeight(addTrackingButton, 28);
-    addTrackingButton.setPreferredSize(new Dimension(220, 28));
+        JButton addTrackingButton = new JButton("Add Tracking Info");
+        addTrackingButton.setPreferredSize(new Dimension(150, 50));
         addTrackingButton.addActionListener(e -> addTrackingInfo());
+        projectStatusPanel.add(addTrackingButton);
 
-    // Configure Generate PDF Button - make wider so caption fits
-    generatePdfButton.setPreferredSize(new Dimension(220, 28));
+        // Add Generate PDF Button to Project Status panel
+        generatePdfButton.setPreferredSize(new Dimension(150, 50));
+        projectStatusPanel.add(generatePdfButton);
 
         // Add Project Status Panel as main panel
         JPanel projectStatusMainPanel = new JPanel(new BorderLayout());
         projectStatusMainPanel.add(projectStatusPanel, BorderLayout.NORTH);
 
-        // Bottom button panel (align with Submit placement in Project Setup)
-        JPanel projectStatusBtnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        projectStatusBtnPanel.add(addTrackingButton);
-        projectStatusBtnPanel.add(generatePdfButton);
-        projectStatusMainPanel.add(projectStatusBtnPanel, BorderLayout.SOUTH);
+        tabbedPane.addTab("Project Status", projectStatusMainPanel);
 
-        // Wrap the Project Status main panel in a scroll pane to allow scrolling
-        JScrollPane projectStatusScroll = new JScrollPane(
-            projectStatusMainPanel,
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        );
-        tabbedPane.addTab("Project Status", projectStatusScroll);
-
-        // Create Projects tab with the data table and an Open Project button
+        // Create Projects tab with just the data table
         JPanel projectsPanel = new JPanel(new BorderLayout());
         projectsPanel.add(scrollPane, BorderLayout.CENTER);
-        JButton openProjectButton = new JButton("Open Project");
-        openProjectButton.addActionListener(e -> {
-            int row = dataTable.getSelectedRow();
-            if (row == -1) {
-                setStatus("Please select a project row first.");
-                announceToScreenReader("Please select a project row first.");
-                return;
-            }
-            String projectName = dataTable.getValueAt(row, 4).toString();
-            try (Connection conn = DriverManager.getConnection(DB_URL);
-                PreparedStatement pstmt = conn.prepareStatement(
-                    "SELECT folder_path FROM Project_Name WHERE name = ?"
-                )) {
-                pstmt.setString(1, projectName);
-                ResultSet rs = pstmt.executeQuery();
-                if (rs.next()) {
-                    String folder = rs.getString("folder_path");
-                    if (folder == null || folder.isEmpty()) {
-                        setStatus("No folder path stored for this project.");
-                        announceToScreenReader("No folder path stored for this project.");
-                        return;
-                    }
-                    Desktop.getDesktop().open(new File(folder));
-                } else {
-                    setStatus("Project folder not found in database.");
-                    announceToScreenReader("Project folder not found in database.");
-                }
-            } catch (Exception ex) {
-                setStatus("Error opening project folder: " + ex.getMessage());
-                announceToScreenReader("Error opening project folder.");
-            }
-        });
-        JPanel projectsBtnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        projectsBtnPanel.add(openProjectButton);
-        projectsPanel.add(projectsBtnPanel, BorderLayout.SOUTH);
-        // Wrap the Projects panel (table) in a scroll pane for inner scrolling
-        JScrollPane projectsScroll = new JScrollPane(
-            projectsPanel,
-            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
-        );
-        tabbedPane.addTab("Projects", projectsScroll);
+        tabbedPane.addTab("Projects", projectsPanel);
 
         // Set up focus traversal
         setFocusTraversalPolicy(new LayoutFocusTraversalPolicy());
@@ -1322,8 +1458,8 @@ public class LedgerGUI extends JFrame {
         JPanel contentPanel = new JPanel(new BorderLayout());
         JLabel helpLabel = new JLabel(getString("help_text"));
         helpLabel.setFocusable(true);
-    contentPanel.add(helpLabel, BorderLayout.CENTER);
-    showAccessibleDialog(this, getString("help_title"), contentPanel, false);
+        contentPanel.add(helpLabel, BorderLayout.CENTER);
+        showAccessibleDialog(this, getString("help_title"), contentPanel);
     }
 
     /**
@@ -1367,174 +1503,7 @@ public class LedgerGUI extends JFrame {
         textArea.setWrapStyleWord(true);
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setPreferredSize(new java.awt.Dimension(700, 500));
-    showAccessibleDialog(this, "Program Tutorial", scrollPane, false);
-    }
-
-    /**
-     * Load the project's config.properties (if present) and return a Properties object.
-     */
-    private Properties loadConfigProperties() {
-        Properties p = new Properties();
-        Path cfg = Paths.get("config.properties");
-        if (Files.exists(cfg)) {
-            try (java.io.InputStream in = Files.newInputStream(cfg)) {
-                p.load(in);
-            } catch (IOException e) {
-                logger.warn("Failed to load config.properties: {}", e.getMessage());
-            }
-        }
-        return p;
-    }
-
-    /**
-     * Save the provided Properties to config.properties in the program root.
-     */
-    private void saveConfigProperties(Properties p) {
-        Path cfg = Paths.get("config.properties");
-        try (java.io.OutputStream out = Files.newOutputStream(cfg)) {
-            p.store(out, "BrailleTranscriptionLedger configuration");
-            setStatus("Configuration saved.");
-        } catch (IOException e) {
-            logger.error("Failed to save config.properties: {}", e.getMessage());
-            JOptionPane.showMessageDialog(this, "Failed to save configuration: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Show a small Preferences dialog allowing the user to edit window.maximized and db.path.
-     */
-    private void showPreferencesDialog() {
-    Properties p = loadConfigProperties();
-        JPanel main = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(6, 6, 6, 6);
-        c.gridx = 0;
-        c.gridy = 0;
-        c.anchor = GridBagConstraints.WEST;
-
-    // Current active DB URL display
-    c.gridx = 0;
-    c.gridy = 0;
-    JLabel currentDbLabel = new JLabel("Active DB: " + (DB_URL != null ? DB_URL : "(not set)"));
-    c.gridwidth = 2;
-    main.add(currentDbLabel, c);
-    c.gridwidth = 1;
-    c.gridy = 1;
-
-    main.add(new JLabel("Start maximized:"), c);
-    c.gridx = 1;
-        String maxVal = p.getProperty("window.maximized", "true");
-        JCheckBox maximizedBox = new JCheckBox();
-        maximizedBox.setSelected(Boolean.parseBoolean(maxVal));
-        main.add(maximizedBox, c);
-
-    c.gridx = 0;
-    c.gridy = 2;
-        main.add(new JLabel("Database path (db.path):"), c);
-        c.gridx = 1;
-        String dbPathVal = p.getProperty("db.path", "app_home/ledger");
-        JTextField dbPathField = new JTextField(dbPathVal, 40);
-        main.add(dbPathField, c);
-
-        // LOG_LEVEL option
-    c.gridx = 0;
-    c.gridy = 3;
-        main.add(new JLabel("Log Level (LOG_LEVEL):"), c);
-        c.gridx = 1;
-        String logVal = p.getProperty("log.level", System.getenv().getOrDefault("LOG_LEVEL", "INFO"));
-        JComboBox<String> logLevelCombo = new JComboBox<>(new String[] {"ERROR", "WARN", "INFO", "DEBUG", "TRACE"});
-        logLevelCombo.setSelectedItem(logVal.toUpperCase());
-        main.add(logLevelCombo, c);
-
-        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton saveBtn = new JButton("Save");
-        JButton restoreBtn = new JButton("Restore Defaults");
-        JButton cancelBtn = new JButton("Cancel");
-
-    saveBtn.addActionListener(e -> {
-            // Validate db.path: must be writable or creatable
-            String v = dbPathField.getText().trim();
-            if (v.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Database path cannot be empty.");
-                return;
-            }
-            Path testPath = Paths.get(v.endsWith(".db") ? v : v);
-            try {
-                // If parent dirs don't exist, attempt to create them
-                Path parent = testPath.getParent();
-                if (parent != null && !Files.exists(parent)) {
-                    Files.createDirectories(parent);
-                }
-                // Attempt to create a temp file next to path to verify writability
-                Path probe = (Files.isDirectory(testPath)) ? testPath.resolve(".probe") : testPath.getParent() != null ? testPath.getParent().resolve(".probe") : Paths.get(".", ".probe");
-                Files.writeString(probe, "probe");
-                Files.deleteIfExists(probe);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "The specified db.path is not writable: " + ex.getMessage());
-                return;
-            }
-
-            p.setProperty("window.maximized", Boolean.toString(maximizedBox.isSelected()));
-            p.setProperty("db.path", v);
-            p.setProperty("log.level", ((String) logLevelCombo.getSelectedItem()).toUpperCase());
-            saveConfigProperties(p);
-
-            // Apply window maximized setting immediately
-            if (maximizedBox.isSelected()) {
-                setExtendedState(getExtendedState() | JFrame.MAXIMIZED_BOTH);
-            } else {
-                setExtendedState(getExtendedState() & ~JFrame.MAXIMIZED_BOTH);
-            }
-
-            // Apply log level immediately if Logback present
-            try {
-                LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
-                ch.qos.logback.classic.Logger root = lc.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-                Level level = Level.toLevel((String) logLevelCombo.getSelectedItem(), Level.INFO);
-                root.setLevel(level);
-                logger.info("Log level set to {}", level);
-            } catch (Exception ex) {
-                logger.warn("Unable to set log level dynamically: {}", ex.getMessage());
-            }
-
-            // If DB path changed, attempt to reconnect (safe attempt) using lifecycle-managed reconnect
-            String newDb = v;
-            String currentBase = DB_URL != null ? DB_URL.replaceFirst("jdbc:h2:", "").replaceFirst(";.*", "") : null;
-            if (currentBase == null || !stripDbSuffix(newDb).equals(stripDbSuffix(currentBase))) {
-                try {
-                    reconnectDatabase(newDb);
-                    currentDbLabel.setText("Active DB: " + DB_URL);
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(this, "Failed to reconnect to the specified database: " + ex.getMessage());
-                    return;
-                }
-            }
-
-            Window w = SwingUtilities.getWindowAncestor(main);
-            if (w instanceof JDialog) ((JDialog) w).dispose();
-        });
-
-        restoreBtn.addActionListener(e -> {
-            // restore defaults
-            maximizedBox.setSelected(true);
-            dbPathField.setText("app_home/ledger");
-            logLevelCombo.setSelectedItem("INFO");
-        });
-
-        cancelBtn.addActionListener(e -> {
-            Window w = SwingUtilities.getWindowAncestor(main);
-            if (w instanceof JDialog) ((JDialog) w).dispose();
-        });
-
-        btns.add(restoreBtn);
-        btns.add(saveBtn);
-        btns.add(cancelBtn);
-
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.add(main, BorderLayout.CENTER);
-        wrapper.add(btns, BorderLayout.SOUTH);
-
-        showAccessibleDialog(this, "Preferences", wrapper, false);
+        showAccessibleDialog(this, "Program Tutorial", scrollPane);
     }
 
     /**
@@ -1568,73 +1537,17 @@ public class LedgerGUI extends JFrame {
     }
 
     /**
-     * Lifecycle-managed reconnect to a new H2 database base path.
-     * This method attempts to gracefully shutdown any local H2 TCP server (if running),
-     * update the DB_URL, reinitialize database schema, and reload UI state.
-     * It is synchronized to avoid concurrent reconnection attempts.
-     */
-    private synchronized void reconnectDatabase(String newDbBase) throws Exception {
-        // Attempt to shutdown H2 at current DB_URL (best-effort)
-        try {
-            if (DB_URL != null) {
-                // Attempt to run SHUTDOWN if the DB file is accessible
-                try (Connection c = DriverManager.getConnection(DB_URL)) {
-                    try (Statement s = c.createStatement()) {
-                        s.execute("SHUTDOWN");
-                    }
-                } catch (SQLException se) {
-                    // ignore - H2 may be in embedded file mode without server
-                }
-            }
-        } catch (Exception ex) {
-            logger.warn("Ignoring error during DB shutdown: {}", ex.getMessage());
-        }
-
-        // Build new DB_URL and test connection
-        String base = stripDbSuffix(newDbBase);
-        String newUrl = "jdbc:h2:" + base + ";AUTO_SERVER=TRUE";
-        try (Connection conn = DriverManager.getConnection(newUrl)) {
-            try (Statement st = conn.createStatement()) {
-                // Ensure necessary schema exists
-                st.executeUpdate("CREATE TABLE IF NOT EXISTS Project_Name (id IDENTITY PRIMARY KEY, name VARCHAR, folder_path TEXT)");
-            }
-        }
-
-        // If successful, assign DB_URL and reinitialize DB-dependent UI
-        DB_URL = newUrl;
-        // Reinitialize database structures in memory/upgrade if needed
-        initializeDatabase();
-        // Reload projects and table data
-        loadDataFromDatabase();
-        refreshProjectNames();
-        setStatus("Connected to: " + DB_URL);
-    }
-
-    /**
-     * Show an accessible dialog (wrapper that defaults to modal).
+     * Show an accessible modal dialog.
+     * @param parent The parent frame.
+     * @param title The dialog title.
+     * @param content The main content component.
      */
     private void showAccessibleDialog(
         JFrame parent,
         String title,
         JComponent content
     ) {
-        showAccessibleDialog(parent, title, content, true);
-    }
-
-    /**
-     * Show an accessible dialog with explicit modal control.
-     * @param parent The parent frame.
-     * @param title The dialog title.
-     * @param content The main content component.
-     * @param modal Whether the dialog should be modal (true) or modeless (false).
-     */
-    private void showAccessibleDialog(
-        JFrame parent,
-        String title,
-        JComponent content,
-        boolean modal
-    ) {
-        JDialog dialog = new JDialog(parent, title, modal);
+        JDialog dialog = new JDialog(parent, title, true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout());
         dialog.add(content, BorderLayout.CENTER);
@@ -1642,7 +1555,7 @@ public class LedgerGUI extends JFrame {
         // Announce dialog to screen readers
         announceToScreenReader(title + " dialog opened.");
 
-        // Focus handling: request focus for content when dialog gains focus
+        // Trap focus within dialog
         dialog.setFocusable(true);
         dialog.addWindowFocusListener(
             new WindowAdapter() {
@@ -1690,170 +1603,11 @@ public class LedgerGUI extends JFrame {
     }
 
     /**
-     * Set a fixed height for a component while preserving or allowing flexible width.
-     */
-    private void setFixedHeight(JComponent comp, int height) {
-        Dimension pref = comp.getPreferredSize();
-        int width = pref != null && pref.width > 0 ? pref.width : 200;
-        comp.setPreferredSize(new Dimension(width, height));
-        comp.setMinimumSize(new Dimension(40, height));
-        comp.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
-    }
-
-    /**
-     * Create a safe folder name from project name by removing unsafe chars.
-     */
-    private String sanitizeForFileName(String name) {
-        if (name == null) return "project";
-        // replace any non-alphanumeric, space, dot, underscore, or hyphen with underscore
-        return name.trim().replaceAll("[^A-Za-z0-9 ._-]", "_").replaceAll("\\s+", "_");
-    }
-
-    /**
-     * Resolve the database base path (without .db suffix) using precedence:
-     * <ol>
-     *   <li>command-line {@code --dbpath=&lt;path&gt;}</li>
-     *   <li>environment variable {@code LEDGER_DB_PATH}</li>
-     *   <li>property {@code db.path} in {@code config.properties} at program root</li>
-     *   <li>user home {@code ~/.brailleledger/ledger}</li>
-     *   <li>{@code app_home/ledger} if present in program root</li>
-     *   <li>default {@code ./ledger}</li>
-     * </ol>
-     *
-     * @param args Command-line arguments that may contain {@code --dbpath=}.
-     * @return The DB base path (without a trailing {@code .db}) to use for H2.
-     */
-    public static String resolveDbBasePath(String[] args) {
-        // Delegate to the supplier-aware overload using system providers
-        return resolveDbBasePath(
-            args,
-            System::getenv,
-            () -> {
-                Path config = Paths.get("config.properties");
-                Properties p = new Properties();
-                if (Files.exists(config)) {
-                    try (java.io.InputStream in = Files.newInputStream(config)) {
-                        p.load(in);
-                    } catch (IOException e) {
-                        // ignore
-                    }
-                }
-                return p;
-            },
-            () -> System.getProperty("user.home"),
-            path -> Files.exists(Paths.get(path)),
-            (root) -> {
-                if (TEST_ROOT_OVERRIDE != null) return TEST_ROOT_OVERRIDE;
-                try {
-                    return new File(".").getCanonicalPath();
-                } catch (IOException e) {
-                    return ".";
-                }
-            }
-        );
-    }
-
-    /**
-     * Overload that accepts providers so tests can inject env/config values.
-     *
-     * @param args Command-line arguments (may be {@code null}).
-     * @param envProvider Function used to read environment variables (key -> value).
-     * @param configSupplier Supplier that returns a loaded {@link Properties}
-     *                       instance from {@code config.properties}.
-     * @param userHomeSupplier Supplier for the user's home directory path.
-     * @param existsChecker Function to check whether a path exists (path -> boolean).
-     * @param rootPathProvider Function to obtain the program root path (ignored in normal runs).
-     * @return The DB base path (without a trailing {@code .db}) chosen by precedence.
-     */
-    public static String resolveDbBasePath(
-        String[] args,
-        java.util.function.Function<String, String> envProvider,
-        java.util.function.Supplier<Properties> configSupplier,
-        java.util.function.Supplier<String> userHomeSupplier,
-        java.util.function.Function<String, Boolean> existsChecker,
-        java.util.function.Function<String, String> rootPathProvider
-    ) {
-        // 1) command-line
-        if (args != null) {
-            for (String a : args) {
-                if (a != null && a.startsWith("--dbpath=")) {
-                    return stripDbSuffix(a.substring("--dbpath=".length()));
-                }
-            }
-        }
-
-        // 2) environment variable
-        try {
-            String env = envProvider.apply("LEDGER_DB_PATH");
-            if (env != null && !env.isBlank()) return stripDbSuffix(env);
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 3) config.properties via supplier
-        try {
-            Properties p = configSupplier.get();
-            if (p != null) {
-                String val = p.getProperty("db.path");
-                if (val != null && !val.isBlank()) return stripDbSuffix(val);
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 4) user home
-        try {
-            String userHome = userHomeSupplier.get();
-            if (userHome != null && !userHome.isBlank()) {
-                String homePath = Paths.get(userHome, ".brailleledger", "ledger").toAbsolutePath().toString();
-                if (existsChecker.apply(homePath) || existsChecker.apply(homePath + ".db")) return stripDbSuffix(homePath);
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 5) app_home
-        try {
-            String root = rootPathProvider.apply(".");
-            Path appHome = Paths.get(root, "app_home", "ledger");
-            Path appHomeDb = Paths.get(root, "app_home", "ledger.db");
-            if (existsChecker.apply(appHome.toAbsolutePath().toString()) || existsChecker.apply(appHomeDb.toAbsolutePath().toString())) {
-                return stripDbSuffix(appHome.toAbsolutePath().toString());
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        // 6) default
-        return stripDbSuffix("./ledger");
-    }
-
-    private static String stripDbSuffix(String path) {
-        if (path == null) return "./ledger";
-        if (path.endsWith(".db")) return path.substring(0, path.length() - 3);
-        return path;
-    }
-
-    /**
-     * Recursively collect all components from a container.
-     */
-    private java.util.List<Component> collectAllComponents(Container c) {
-        java.util.List<Component> list = new ArrayList<>();
-        for (Component child : c.getComponents()) {
-            list.add(child);
-            if (child instanceof Container) {
-                list.addAll(collectAllComponents((Container) child));
-            }
-        }
-        return list;
-    }
-
-    /**
      * Sets the global UI font size for all components.
      * @param sizeName The size label ("Default", "Large", "Extra Large", "XXL").
      */
     private void setUIFontSize(String sizeName) {
-        int size = 16;
+        int size = 32;
         FontUIResource fontRes = new FontUIResource(
             "SansSerif",
             Font.PLAIN,
@@ -1879,18 +1633,18 @@ public class LedgerGUI extends JFrame {
         if (projectElementField != null) projectElementField.setFont(fieldFont);
         if (projectTimeField != null) projectTimeField.setFont(fieldFont);
         if (updatedField != null) updatedField.setFont(
-            new Font("SansSerif", Font.PLAIN, 16)
+            new Font("SansSerif", Font.PLAIN, 32)
         );
         if (completeComboBox != null) completeComboBox.setFont(fieldFont);
         // Ensure all dropdowns and text fields in Project Setup and Project Status use 32pt
         if (proofStatusField != null) proofStatusField.setFont(
-            new Font("SansSerif", Font.PLAIN, 16)
+            new Font("SansSerif", Font.PLAIN, 32)
         );
         if (deliveryModeField != null) deliveryModeField.setFont(
-            new Font("SansSerif", Font.PLAIN, 16)
+            new Font("SansSerif", Font.PLAIN, 32)
         );
         if (projectNameField != null) projectNameField.setFont(
-            new Font("SansSerif", Font.PLAIN, 16)
+            new Font("SansSerif", Font.PLAIN, 32)
         );
 
         // Error labels and help buttons
@@ -1977,7 +1731,7 @@ public class LedgerGUI extends JFrame {
         mainPanel.add(panel, BorderLayout.CENTER);
         mainPanel.add(btnPanel, BorderLayout.SOUTH);
 
-    showAccessibleDialog(this, "Keyboard Shortcuts", mainPanel, false);
+        showAccessibleDialog(this, "Keyboard Shortcuts", mainPanel);
     }
 
     private void showCustomKeystrokeDialog(
@@ -2020,6 +1774,36 @@ public class LedgerGUI extends JFrame {
         });
         dialog.add(okBtn, BorderLayout.SOUTH);
 
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private String getShortcutPref(String action) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        return prefs.get("shortcut_" + action, getDefaultShortcut(action));
+    }
+
+    private void setShortcutPref(String action, String shortcut) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
+        prefs.put("shortcut_" + action, shortcut);
+    }
+
+    private String getDefaultShortcut(String action) {
+        switch (action) {
+            case "Help":
+                return "Ctrl+.";
+            case "Submit":
+                return "Ctrl+Enter";
+            case "Generate PDF":
+                return "Ctrl+G";
+            case "Skip to Main Content":
+                return "Alt+M";
+            default:
+                return "Ctrl+.";
+        }
     }
 
     private void updateAllShortcuts() {
@@ -2046,31 +1830,6 @@ public class LedgerGUI extends JFrame {
         if (shortcut == null) return null;
         shortcut = shortcut.replace("Ctrl", "control").replace("Alt", "alt");
         return KeyStroke.getKeyStroke(shortcut.replace("+", " "));
-    }
-
-    private String getShortcutPref(String action) {
-        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
-        return prefs.get("shortcut_" + action, getDefaultShortcut(action));
-    }
-
-    private void setShortcutPref(String action, String shortcut) {
-        java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(LedgerGUI.class);
-        prefs.put("shortcut_" + action, shortcut);
-    }
-
-    private String getDefaultShortcut(String action) {
-        switch (action) {
-            case "Help":
-                return "Ctrl+.";
-            case "Submit":
-                return "Ctrl+Enter";
-            case "Generate PDF":
-                return "Ctrl+G";
-            case "Skip to Main Content":
-                return "Alt+M";
-            default:
-                return "Ctrl+.";
-        }
     }
 
     /**
@@ -2275,68 +2034,30 @@ public class LedgerGUI extends JFrame {
      * @param labelText the text for the label
      * @param field   the field component to add
      */
-    private void addLabelAndField(JPanel panel, String labelText, JComponent field) {
-        if (field == null) {
-            throw new IllegalArgumentException("Field component cannot be null");
-        }
+    private void addLabelAndField(
+        JPanel panel,
+        String labelText,
+        JComponent field
+    ) {
         JLabel label = new JLabel(labelText);
+        if (field == null) {
+            throw new IllegalArgumentException(
+                "Field component cannot be null"
+            );
+        }
         label.setLabelFor(field);
         label.setFocusable(false);
         field.setFocusable(true);
-        field.getAccessibleContext().setAccessibleName(labelText.replaceAll("<[^>]*>", ""));
+        field
+            .getAccessibleContext()
+            .setAccessibleName(labelText.replaceAll("<[^>]*>", ""));
         field
             .getAccessibleContext()
             .setAccessibleDescription(
                 "Enter " + labelText.replaceAll("<[^>]*>", "").toLowerCase()
             );
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 8, 4, 8);
-    gbc.gridx = 0;
-    gbc.gridy = GridBagConstraints.RELATIVE;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.weightx = 0.0;
-        panel.add(label, gbc);
-
-        gbc = new GridBagConstraints();
-        gbc.insets = new Insets(4, 8, 4, 8);
-    gbc.gridx = 1;
-    gbc.gridy = GridBagConstraints.RELATIVE;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
-        panel.add(field, gbc);
-    }
-
-    /**
-     * Remove help buttons ("?") from the given container and ensure their
-     * tooltip text is transferred to the corresponding input field's tooltip.
-     */
-    private void removeHelpButtonsAndMoveTooltips(Container root) {
-        java.util.List<Component> all = collectAllComponents(root);
-        for (Component c : all) {
-            if (c instanceof JButton) {
-                JButton b = (JButton) c;
-                if ("?".equals(b.getText())) {
-                    String tip = b.getToolTipText();
-                    Container parent = b.getParent();
-                    if (parent != null) {
-                        // try to find sibling input component
-                        for (Component sib : parent.getComponents()) {
-                            if (sib != b && sib instanceof JComponent) {
-                                JComponent jc = (JComponent) sib;
-                                if (tip != null && tip.length() > 0) {
-                                    jc.setToolTipText(tip);
-                                }
-                            }
-                        }
-                    }
-                    // remove button from parent
-                    if (parent != null) parent.remove(b);
-                }
-            }
-        }
+        panel.add(label, BorderLayout.WEST);
+        panel.add(field, BorderLayout.EAST);
     }
 
     /**
@@ -2576,14 +2297,11 @@ public class LedgerGUI extends JFrame {
     public static void main(String[] args) {
         // Parse log level from command-line arguments
         String logLevelStr = "WARN"; // Default to WARN
-        boolean wantHelp = false;
         for (String arg : args) {
             if (arg.startsWith("--loglevel=")) {
                 logLevelStr = arg
                     .substring("--loglevel=".length())
                     .toUpperCase();
-            } else if ("--help".equals(arg) || "-h".equals(arg)) {
-                wantHelp = true;
             }
         }
         System.setProperty("LOG_LEVEL", logLevelStr);
@@ -2599,7 +2317,7 @@ public class LedgerGUI extends JFrame {
             UIManager.put(
                 "defaultFont",
                 new FontUIResource(
-                    new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 16)
+                    new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 32)
                 )
             ); // Example font size 16
         } catch (
@@ -2612,34 +2330,10 @@ public class LedgerGUI extends JFrame {
             | UnsupportedLookAndFeelException ex
         ) {}
 
-        if (wantHelp) {
-            String help = "Available arguments:\n" +
-                "  --dbpath=<path>   Set explicit DB base path (without .db)\n" +
-                "  --loglevel=<level> Set log level (INFO,WARN,DEBUG)\n" +
-                "  --help, -h        Show this help";
-            System.out.println(help);
-            return;
-        }
-
         SwingUtilities.invokeLater(() -> {
-            LedgerGUI gui = new LedgerGUI(args);
+            LedgerGUI gui = new LedgerGUI();
             gui.setVisible(true);
-            // after visible, set a non-modal status message
-            gui.setStatus("Using database: " + gui.DB_URL);
         });
-    }
-
-    /**
-     * Set the status bar text (non-modal). Safe to call before statusBar exists.
-    * @param msg The status message to display in the non-modal status bar.
-    */
-    public void setStatus(String msg) {
-        if (statusBar != null) {
-            statusBar.setText(msg);
-        } else {
-            // fallback: log if statusBar not initialized yet
-            logger.info(msg);
-        }
     }
 
     /**
@@ -2660,7 +2354,7 @@ public class LedgerGUI extends JFrame {
                 UIManager.put(
                     "defaultFont",
                     new FontUIResource(
-                        new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 16)
+                        new java.awt.Font("Helvetica", java.awt.Font.PLAIN, 24)
                     )
                 ); // Example font size 16
                 SwingUtilities.updateComponentTreeUI(this);
@@ -2691,14 +2385,6 @@ public class LedgerGUI extends JFrame {
             Statement stmt = conn.createStatement();
         ) {
             // Database initialization logic here
-            // Ensure folder_path column exists for Project_Name (handle upgrades)
-            try {
-                stmt.executeUpdate(
-                    "ALTER TABLE Project_Name ADD COLUMN IF NOT EXISTS folder_path TEXT"
-                );
-            } catch (SQLException e) {
-                // ignore - column may already exist or DB doesn't support IF NOT EXISTS on ALTER
-            }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(
                 this,
@@ -2998,9 +2684,7 @@ public class LedgerGUI extends JFrame {
                 "CREATE TABLE IF NOT EXISTS Project_Name (" +
                 "project_name_id INT PRIMARY KEY AUTO_INCREMENT, " +
                 "name TEXT NOT NULL, " +
-                "date TEXT NOT NULL, " +
-                "folder_path TEXT" +
-                ")";
+                "date TEXT NOT NULL)";
             try {
                 stmt.execute(sqlProjectName);
             } catch (SQLException e) {
@@ -3577,44 +3261,6 @@ public class LedgerGUI extends JFrame {
             return;
         }
 
-        // Create project folder under app_home/projects and move ledger DB if necessary
-        try {
-            String root;
-            if (TEST_ROOT_OVERRIDE != null) {
-                root = TEST_ROOT_OVERRIDE;
-            } else {
-                root = new File(".").getCanonicalPath();
-            }
-            Path appHome = Paths.get(root, "app_home");
-            Path projectsDir = appHome.resolve("projects");
-            if (!Files.exists(projectsDir)) Files.createDirectories(projectsDir);
-            String folderName = sanitizeForFileName(setupProjectName);
-            Path projectFolder = projectsDir.resolve(folderName);
-            if (!Files.exists(projectFolder)) Files.createDirectories(projectFolder);
-
-            // Move ledger files to app_home if not already moved
-            Path ledgerDb = Paths.get(root, "ledger.mv.db");
-            Path ledgerDbAlt = Paths.get(root, "ledger.db");
-            Path targetLedger = appHome.resolve("ledger.db");
-            if (Files.exists(ledgerDb) && !Files.exists(targetLedger)) {
-                Files.move(ledgerDb, targetLedger, StandardCopyOption.REPLACE_EXISTING);
-            } else if (Files.exists(ledgerDbAlt) && !Files.exists(targetLedger)) {
-                Files.move(ledgerDbAlt, targetLedger, StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            // Store project folder path in DB
-            try (Connection conn = DriverManager.getConnection(DB_URL);
-                PreparedStatement pstmt = conn.prepareStatement(
-                    "UPDATE Project_Name SET folder_path = ? WHERE project_name_id = ?"
-                )) {
-                pstmt.setString(1, projectFolder.toAbsolutePath().toString());
-                pstmt.setInt(2, projectNameId);
-                pstmt.executeUpdate();
-            }
-        } catch (IOException | SQLException ex) {
-            logger.error("Error creating project folder or moving DB: {}", ex.getMessage());
-        }
-
         // Removed Project_Tracking insert block: Project Details Submit should not write to Project_Tracking
 
         loadDataFromDatabase();
@@ -3790,7 +3436,7 @@ public class LedgerGUI extends JFrame {
     private void showLogWindow(String title, String message) {
         JTextArea textArea = new JTextArea(message);
         textArea.setEditable(false);
-        textArea.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        textArea.setFont(new Font("SansSerif", Font.PLAIN, 20));
         JScrollPane scrollPane = new JScrollPane(textArea);
         scrollPane.setPreferredSize(new Dimension(600, 400));
         JOptionPane.showMessageDialog(
@@ -4051,15 +3697,8 @@ public class LedgerGUI extends JFrame {
         private PdfTemplate t;
         private com.itextpdf.text.Image total;
 
-    /**
-     * Called when the PDF document is opened. Prepares templates used for
-     * total page counts and other document-level resources.
-     *
-     * @param writer   the PdfWriter for the document
-     * @param document the Document being written
-     */
-    @Override
-    public void onOpenDocument(PdfWriter writer, Document document) {
+        @Override
+        public void onOpenDocument(PdfWriter writer, Document document) {
             t = writer.getDirectContent().createTemplate(30, 16);
             try {
                 total = com.itextpdf.text.Image.getInstance(t);
@@ -4070,14 +3709,8 @@ public class LedgerGUI extends JFrame {
             // Helper functions for inserting or getting IDs
         }
 
-    /**
-     * Called at the end of each page. Adds header and footer content.
-     *
-     * @param writer   the PdfWriter for the document
-     * @param document the Document being written
-     */
-    @Override
-    public void onEndPage(PdfWriter writer, Document document) {
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
             addHeader(writer, document);
             addFooter(writer, document);
         }
@@ -4206,15 +3839,8 @@ public class LedgerGUI extends JFrame {
             }
         }
 
-    /**
-     * Called when the PDF document is closed. Finalizes the total page
-     * count template.
-     *
-     * @param writer   the PdfWriter for the document
-     * @param document the Document being written
-     */
-    @Override
-    public void onCloseDocument(PdfWriter writer, Document document) {
+        @Override
+        public void onCloseDocument(PdfWriter writer, Document document) {
             int totalLength = String.valueOf(writer.getPageNumber()).length();
             int totalWidth = totalLength * 5;
             ColumnText.showTextAligned(

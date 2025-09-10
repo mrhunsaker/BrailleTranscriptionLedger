@@ -40,12 +40,19 @@
         <executions>
           <execution>
             <id>attach-javadocs</id>
+            <phase>package</phase>
             <goals>
               <goal>jar</goal>
             </goals>
           </execution>
         </executions>
         <inherited>true</inherited>
+        <configuration>
+          <failOnError>true</failOnError>
+          <additionalJOptions>
+            <additionalJOption>-Xdoclint:all,-missing</additionalJOption>
+          </additionalJOptions>
+        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
@@ -84,6 +91,28 @@
       </plugin>
     </plugins>
   </build>
+  <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.0</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>junit-jupiter-api</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-params</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-engine</artifactId>
+          <groupId>org.junit.jupiter</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+  </dependencies>
   <reporting>
     <plugins>
       <plugin>
