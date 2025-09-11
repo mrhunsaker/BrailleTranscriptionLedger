@@ -47,6 +47,21 @@ public class SubmitFlowIntegrationTest {
             assertTrue(Files.exists(projectFolder), "Project folder should be created");
             assertTrue(Files.exists(appHomeLedger), "Ledger DB should be moved into app_home/ledger.db");
 
+            // Verify folder_path was persisted into Project_Name table.
+            // Use the GUI instance's DB_URL so we query the same H2 instance.
+            java.lang.reflect.Field dbField = LedgerGUI.class.getDeclaredField("DB_URL");
+            dbField.setAccessible(true);
+            String jdbc = (String) dbField.get(gui);
+            try (java.sql.Connection conn = java.sql.DriverManager.getConnection(jdbc)) {
+                java.sql.PreparedStatement ps = conn.prepareStatement("SELECT folder_path FROM Project_Name WHERE name = ?");
+                ps.setString(1, "Test Project Submit");
+                java.sql.ResultSet rs = ps.executeQuery();
+                assertTrue(rs.next(), "Project_Name row should exist");
+                String stored = rs.getString("folder_path");
+                assertNotNull(stored, "folder_path should be non-null");
+                assertEquals(projectFolder.toAbsolutePath().toString(), stored);
+            }
+
         } finally {
             // cleanup and restore working dir
             System.setProperty("user.dir", originalUserDir);
