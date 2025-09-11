@@ -8,6 +8,7 @@ import java.util.Map;
 /**
  * Logger utility for BrailleTranscriptionLedger.
  * Supports log levels, structured output, and log rotation.
+ * @since 2025.07.01
  */
 public class Logger {
 
@@ -67,6 +68,7 @@ public class Logger {
     /**
      * Set the current log level.
      * @param level LogLevel to set
+    * @since 2025.07.01
      */
     public static void setLogLevel(LogLevel level) {
         currentLogLevel = level;
@@ -76,6 +78,7 @@ public class Logger {
     /**
      * Get the current log level.
      * @return current LogLevel
+    * @since 2025.07.01
      */
     public static LogLevel getLogLevel() {
         return currentLogLevel;
@@ -85,6 +88,7 @@ public class Logger {
      * Log a message at the specified level.
      * @param level LogLevel for the message
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void log(LogLevel level, String msg) {
         if (level.ordinal() < currentLogLevel.ordinal()) return;
@@ -94,6 +98,7 @@ public class Logger {
     /**
      * Log a debug message.
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void debug(String msg) {
         log(LogLevel.DEBUG, msg);
@@ -102,6 +107,7 @@ public class Logger {
     /**
      * Log an info message.
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void info(String msg) {
         log(LogLevel.INFO, msg);
@@ -110,6 +116,7 @@ public class Logger {
     /**
      * Log a warning message.
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void warn(String msg) {
         log(LogLevel.WARN, msg);
@@ -118,6 +125,7 @@ public class Logger {
     /**
      * Log an error message.
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void error(String msg) {
         log(LogLevel.ERROR, msg);
@@ -126,6 +134,7 @@ public class Logger {
     /**
      * Log a fatal message.
      * @param msg Message to log
+    * @since 2025.07.01
      */
     public static void fatal(String msg) {
         log(LogLevel.FATAL, msg);

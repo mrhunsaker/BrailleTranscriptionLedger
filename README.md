@@ -181,6 +181,18 @@ java -DLOG_LEVEL=INFO -jar target/BrailleTranscriptionLedger.jar
 
 This README section documents the runtime precedence and how to override the database and logging settings for testing or deployment.
 
+---
+
+## Configuration Keys {#configuration-keys}
+
+This section documents the small set of runtime configuration keys the application reads from `config.properties` in the program root. These keys are referenced in the Javadoc for `LedgerGUI`.
+
+- `db.path` — base path used to locate the embedded H2 database (examples: `./app_home/ledger`, `D:/data/ledger`).
+- `window.maximized` — `true` or `false` to control whether the main window starts maximized.
+- `log.level` — logging level (DEBUG, INFO, WARN, ERROR, FATAL).
+
+See the section above "Database location & logging" for usage examples and precedence rules.
+
 
 ## JSON Configuration Files
 

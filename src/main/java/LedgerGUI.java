@@ -79,6 +79,16 @@ import ch.qos.logback.classic.LoggerContext;
  *
  * @author Michael Ryan Hunsaker, M.Ed., Ph.D.
  * @version 2025.07.01
+ * @since 2025.07.01
+ *
+ * <h2>Configuration keys</h2>
+ * The application reads a small set of keys from a `config.properties` file in the program root. Keys include:
+ * <ul>
+ *   <li>{@code db.path} — base path used to locate the embedded H2 database (examples: {@code ./app_home/ledger}, {@code D:/data/ledger})</li>
+ *   <li>{@code window.maximized} — {@code true|false} whether the main window should start maximized</li>
+ *   <li>{@code log.level} — logging level (DEBUG, INFO, WARN, ERROR, FATAL)</li>
+ * </ul>
+ * @see <a href="README.md#configuration-keys">README.md#configuration-keys</a> for configuration precedence and CLI overrides
  */
 public class LedgerGUI extends JFrame {
 
@@ -392,6 +402,8 @@ public class LedgerGUI extends JFrame {
 
     /**
      * Constructs a new `LedgerGUI` instance and initializes the application's components.
+    *
+    * @since 2025.07.01
      */
     public LedgerGUI() {
         this(new String[0]);
@@ -402,6 +414,7 @@ public class LedgerGUI extends JFrame {
     *
     * @param args Command-line arguments passed to the program. May include
     *             options such as {@code --dbpath=<path>} or {@code --loglevel=<level>}.
+    * @since 2025.07.01
      */
     public LedgerGUI(String[] args) {
     // Resolve DB base path using precedence rules
@@ -1065,6 +1078,10 @@ public class LedgerGUI extends JFrame {
         dragDropPanel.addFocusListener(
             new FocusAdapter() {
                 public void focusGained(FocusEvent e) {
+                /**
+                 * Focus gained handler for accessible components.
+                 * @since 2025.07.01
+                 */
                     announceToScreenReader(
                         "File drop area focused. You can drop files here or use the file picker button."
                     );
@@ -1573,6 +1590,17 @@ public class LedgerGUI extends JFrame {
      * update the DB_URL, reinitialize database schema, and reload UI state.
      * It is synchronized to avoid concurrent reconnection attempts.
      */
+    /**
+     * Lifecycle-managed reconnect to a new H2 database base path.
+     * This method attempts to gracefully shutdown any local H2 TCP server (if running),
+     * update the DB_URL, reinitialize database schema, and reload UI state.
+     * It is synchronized to avoid concurrent reconnection attempts.
+     *
+     * @param newDbBase database base path (may include ./ or absolute path)
+     * @throws Exception when the connection test or schema initialization fails
+     * @see #resolveDbBasePath(String[])
+     * @since 2025.07.01
+     */
     private synchronized void reconnectDatabase(String newDbBase) throws Exception {
         // Attempt to shutdown H2 at current DB_URL (best-effort)
         try {
@@ -1647,6 +1675,10 @@ public class LedgerGUI extends JFrame {
         dialog.addWindowFocusListener(
             new WindowAdapter() {
                 public void windowGainedFocus(WindowEvent e) {
+                /**
+                 * Window focus gained handler.
+                 * @since 2025.07.01
+                 */
                     content.requestFocusInWindow();
                 }
             }
@@ -1722,8 +1754,19 @@ public class LedgerGUI extends JFrame {
      *
      * @param args Command-line arguments that may contain {@code --dbpath=}.
      * @return The DB base path (without a trailing {@code .db}) to use for H2.
+    * @see <a href="README.md#configuration-keys">README.md#configuration-keys</a>
      */
     public static String resolveDbBasePath(String[] args) {
+    /**
+     * Resolve the base filesystem path used for the embedded H2 database according
+     * to precedence rules: CLI args -> LEDGER_DB_PATH env var -> config.properties -> user home -> app_home -> cwd.
+     * <p>
+     * Example usage:
+     * <pre>
+     * String base = LedgerGUI.resolveDbBasePath(new String[]{"--dbpath=./data/ledger"});
+     * </pre>
+     * @since 2025.07.01
+     */
         // Delegate to the supplier-aware overload using system providers
         return resolveDbBasePath(
             args,
@@ -1766,6 +1809,10 @@ public class LedgerGUI extends JFrame {
      * @return The DB base path (without a trailing {@code .db}) chosen by precedence.
      */
     public static String resolveDbBasePath(
+    /**
+     * Key-based overload used for testing; resolves DB base path using a supplier.
+     * @since 2025.07.01
+     */
         String[] args,
         java.util.function.Function<String, String> envProvider,
         java.util.function.Supplier<Properties> configSupplier,
@@ -1999,6 +2046,10 @@ public class LedgerGUI extends JFrame {
         keyField.addKeyListener(
             new KeyAdapter() {
                 public void keyPressed(KeyEvent e) {
+                /**
+                 * Key pressed handler for global shortcuts.
+                 * @since 2025.07.01
+                 */
                     captured[0] = KeyStroke.getKeyStrokeForEvent(e);
                     keyField.setText(
                         KeyEvent.getModifiersExText(e.getModifiersEx()) +
@@ -2543,6 +2594,11 @@ public class LedgerGUI extends JFrame {
      * @return the current month's 15th day as a string
      */
     public String getCurrentMonth15th() {
+    /**
+     * Return the fifteenth day for the current month as a formatted string.
+     * @return formatted date string
+     * @since 2025.07.01
+     */
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.DAY_OF_MONTH, 15); // Set day to 15
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -2555,6 +2611,11 @@ public class LedgerGUI extends JFrame {
      * @return the previous month's 16th day as a string
      */
     public String getPreviousMonth16th() {
+    /**
+     * Return the 16th day of the previous month as a formatted string.
+     * @return formatted date string
+     * @since 2025.07.01
+     */
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.MONTH, -1); // Go back one month
         cal.set(Calendar.DAY_OF_MONTH, 16); // Set day to 15
@@ -2574,6 +2635,11 @@ public class LedgerGUI extends JFrame {
      * @param args Command-line arguments passed to the application.
      */
     public static void main(String[] args) {
+    /**
+     * Application entry point.
+     * @param args CLI args forwarded to the application (see README for supported options)
+     * @since 2025.07.01
+     */
         // Parse log level from command-line arguments
         String logLevelStr = "WARN"; // Default to WARN
         boolean wantHelp = false;
@@ -2634,6 +2700,11 @@ public class LedgerGUI extends JFrame {
     * @param msg The status message to display in the non-modal status bar.
     */
     public void setStatus(String msg) {
+    /**
+     * Set text of the non-modal status bar at the bottom of the main window.
+     * @param msg Message to display
+     * @since 2025.07.01
+     */
         if (statusBar != null) {
             statusBar.setText(msg);
         } else {
@@ -3282,12 +3353,31 @@ public class LedgerGUI extends JFrame {
         String lea = (leaField.getSelectedItem() != null)
             ? leaField.getSelectedItem().toString()
             : "";
-        int schoolId = getOrInsertSchoolId(school);
-        int leaId = getOrInsertLeaId(lea);
+        int schoolId = -1;
+        int leaId = -1;
+        try {
+            schoolId = getOrInsertSchoolId(school);
+            leaId = getOrInsertLeaId(lea);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error resolving school/LEA IDs: " + e.getMessage());
+            return;
+        }
         logger.info("Submit pressed: projectName='{}'", projectName);
-        int projectNameId = getOrInsertProjectNameId(projectName, updated);
+        int projectNameId = -1;
+        try {
+            projectNameId = getOrInsertProjectNameId(projectName, updated);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error resolving project name ID: " + e.getMessage());
+            return;
+        }
         logger.info("Resolved projectNameId={}", projectNameId);
-        int studentId = getOrInsertStudentId(student, schoolId, leaId);
+        int studentId = -1;
+        try {
+            studentId = getOrInsertStudentId(student, schoolId, leaId);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error resolving student ID: " + e.getMessage());
+            return;
+        }
 
         if (projectName == null || projectName.trim().isEmpty()) {
             logger.error(
@@ -3526,14 +3616,39 @@ public class LedgerGUI extends JFrame {
             : "";
 
         // Insert or get IDs for all related tables
-        int schoolId = getOrInsertSchoolId(school);
-        int leaId = getOrInsertLeaId(lea);
-        int teacherId = getOrInsertTeacherId(teacher, schoolId);
-        int tviId = getOrInsertTviId(tvi, schoolId);
-        int studentId = getOrInsertStudentId(student, schoolId, leaId);
-        int subjectId = getOrInsertSubjectId(subject, teacherId, schoolId);
-        int projectNameId = getOrInsertProjectNameId(setupProjectName, date);
-        int mediaTypeId = getOrInsertMediaTypeId(mediaType, projectNameId);
+        int schoolId = -1;
+        int leaId = -1;
+        int teacherId = -1;
+        int tviId = -1;
+        int studentId = -1;
+        int subjectId = -1;
+        try {
+            schoolId = getOrInsertSchoolId(school);
+            leaId = getOrInsertLeaId(lea);
+            teacherId = getOrInsertTeacherId(teacher, schoolId);
+            tviId = getOrInsertTviId(tvi, schoolId);
+            studentId = getOrInsertStudentId(student, schoolId, leaId);
+            subjectId = getOrInsertSubjectId(subject, teacherId, schoolId);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error resolving entity IDs: " + e.getMessage());
+            announceToScreenReader("Database error: " + e.getMessage());
+            return;
+        }
+        int projectNameId = -1;
+        try {
+            projectNameId = getOrInsertProjectNameId(setupProjectName, date);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error creating project name: " + e.getMessage());
+            announceToScreenReader("Error creating project name: " + e.getMessage());
+            return;
+        }
+        int mediaTypeId = -1;
+        try {
+            mediaTypeId = getOrInsertMediaTypeId(mediaType, projectNameId);
+        } catch (SQLException e) {
+            showLogWindow("Database Error", "Error resolving media type ID: " + e.getMessage());
+            return;
+        }
 
         // Insert into Student_Teachers (many-to-many)
         insertStudentTeacher(studentId, teacherId);
@@ -3824,6 +3939,23 @@ public class LedgerGUI extends JFrame {
      * @param endDate           the end date for the report
      * @param selectedProjects  the list of selected projects to include in the report
      */
+    /**
+     * Generates a PDF report for the specified date range and selected projects.
+     * The PDF is written to the user's Downloads folder and opened automatically when possible.
+     *
+     * Example:
+     * <pre>
+     * generatePdfReport("2025-08-01","2025-08-31", List.of("Project A","Project B"));
+     * </pre>
+     *
+     * @param startDate the start date for the report (YYYY-MM-DD)
+     * @param endDate the end date for the report (YYYY-MM-DD)
+     * @param selectedProjects the list of selected projects to include in the report
+     * @throws FileNotFoundException when the temporary PDF cannot be created
+     * @throws DocumentException when there is an iText error while building the PDF
+     * @see HeaderFooterPageEvent
+     * @since 2025.07.01
+     */
     private void generatePdfReport(
         String startDate,
         String endDate,
@@ -4060,6 +4192,10 @@ public class LedgerGUI extends JFrame {
      */
     @Override
     public void onOpenDocument(PdfWriter writer, Document document) {
+    /**
+     * iText PDF page event hook: called when a document is opened.
+     * @since 2025.07.01
+     */
             t = writer.getDirectContent().createTemplate(30, 16);
             try {
                 total = com.itextpdf.text.Image.getInstance(t);
@@ -4078,6 +4214,10 @@ public class LedgerGUI extends JFrame {
      */
     @Override
     public void onEndPage(PdfWriter writer, Document document) {
+    /**
+     * iText PDF page event hook: called at the end of each page.
+     * @since 2025.07.01
+     */
             addHeader(writer, document);
             addFooter(writer, document);
         }
@@ -4215,6 +4355,10 @@ public class LedgerGUI extends JFrame {
      */
     @Override
     public void onCloseDocument(PdfWriter writer, Document document) {
+    /**
+     * iText PDF page event hook: called when the document is closed.
+     * @since 2025.07.01
+     */
             int totalLength = String.valueOf(writer.getPageNumber()).length();
             int totalWidth = totalLength * 5;
             ColumnText.showTextAligned(
@@ -4310,7 +4454,14 @@ public class LedgerGUI extends JFrame {
 
     // Helper functions for inserting or getting IDs
 
-    private int getOrInsertSchoolId(String schoolName) {
+    /**
+     * Get or insert a school and return its id.
+     * @param schoolName the name of the school
+     * @return school id or -1 if not found
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
+    private int getOrInsertSchoolId(String schoolName) throws SQLException {
         if (schoolName == null || schoolName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4333,7 +4484,14 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
-    private int getOrInsertLeaId(String leaName) {
+    /**
+     * Get or insert an LEA and return its id.
+     * @param leaName the lea name
+     * @return lea id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
+    private int getOrInsertLeaId(String leaName) throws SQLException {
         if (leaName == null || leaName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4356,7 +4514,15 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
-    private int getOrInsertTeacherId(String teacherName, int schoolId) {
+    /**
+     * Get or insert a teacher and return its id.
+     * @param teacherName teacher name
+     * @param schoolId associated school id
+     * @return teacher id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
+    private int getOrInsertTeacherId(String teacherName, int schoolId) throws SQLException {
         if (teacherName == null || teacherName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4380,7 +4546,15 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
-    private int getOrInsertTviId(String tviName, int schoolId) {
+    /**
+     * Get or insert a TVI and return its id.
+     * @param tviName tvi name
+     * @param schoolId school id
+     * @return tvi id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
+    private int getOrInsertTviId(String tviName, int schoolId) throws SQLException {
         if (tviName == null || tviName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4404,11 +4578,20 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
+    /**
+     * Get or insert a student and return its id.
+     * @param studentName student name
+     * @param schoolId school id
+     * @param leaId lea id
+     * @return student id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
     private int getOrInsertStudentId(
         String studentName,
         int schoolId,
         int leaId
-    ) {
+    ) throws SQLException {
         if (studentName == null || studentName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4433,11 +4616,20 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
+    /**
+     * Get or insert a subject and return its id.
+     * @param subjectName subject name
+     * @param teacherId teacher id
+     * @param schoolId school id
+     * @return subject id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
     private int getOrInsertSubjectId(
         String subjectName,
         int teacherId,
         int schoolId
-    ) {
+    ) throws SQLException {
         if (subjectName == null || subjectName.isEmpty()) return -1;
         try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
@@ -4462,7 +4654,15 @@ public class LedgerGUI extends JFrame {
         return -1;
     }
 
-    private int getOrInsertProjectNameId(String projectName, String date) {
+    /**
+     * Insert or get the project name ID for a given project name.
+     * @param projectName the project name
+     * @param date the date string to associate when creating
+     * @return the project_name_id
+     * @throws SQLException when DB operations fail
+     * @since 2025.07.01
+     */
+    private int getOrInsertProjectNameId(String projectName, String date) throws SQLException {
         if (projectName == null || projectName.isEmpty()) {
             logger.error(
                 "getOrInsertProjectNameId: projectName is null or empty."
@@ -4476,7 +4676,7 @@ public class LedgerGUI extends JFrame {
                 date
             );
         }
-        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+    try (Connection conn = DriverManager.getConnection(DB_URL)) {
             PreparedStatement select = conn.prepareStatement(
                 "SELECT project_name_id FROM Project_Name WHERE name = ?"
             );
@@ -4492,20 +4692,21 @@ public class LedgerGUI extends JFrame {
             insert.executeUpdate();
             ResultSet gen = insert.getGeneratedKeys();
             if (gen.next()) return gen.getInt(1);
-        } catch (SQLException e) {
-            logger.error(
-                "Project_Name insert/get error: {} (projectName={}, date={})",
-                e.getMessage(),
-                projectName,
-                date
-            );
-        }
-        return -1;
+    }
+    return -1;
     }
 
     // --- Logging methods ---
 
-    private int getOrInsertMediaTypeId(String mediaType, int projectNameId) {
+    /**
+     * Get or insert a media type and return its id.
+     * @param mediaType media type name
+     * @param projectNameId associated project name id
+     * @return media type id or -1
+     * @throws SQLException on DB errors
+     * @since 2025.07.01
+     */
+    private int getOrInsertMediaTypeId(String mediaType, int projectNameId) throws SQLException {
         if (
             mediaType == null || mediaType.isEmpty() || projectNameId == -1
         ) return -1;

@@ -9,14 +9,14 @@
 --release
 17
 -sourcepath
-'D:/GitHubRepos/BrailleTranscriptionLedger/src/main/java'
+'D:/GitHubRepos/BrailleTranscriptionLedger/src/main/java;D:/GitHubRepos/BrailleTranscriptionLedger/target/generated-sources/annotations'
 -author
 -bottom
 'Copyright &#169; 2025 <a href="https://github.com/mrhunsaker/">Michael Ryan Hunsaker, M.Ed., Ph.D.</a>. All rights reserved.'
 -charset
 'UTF-8'
 -d
-'D:/GitHubRepos/BrailleTranscriptionLedger/target/site/apidocs'
+'D:/GitHubRepos/BrailleTranscriptionLedger/target/apidocs'
 -docencoding
 'UTF-8'
 -doctitle
@@ -37,22 +37,23 @@ C:\Users\Ryan Hunsaker\.m2\repository\ch\qos\logback\logback-core\1.5.7\logback-
 C:\Users\Ryan Hunsaker\.m2\repository\org\json\json\20240303\json-20240303.jar = 1757077266952
 C:\Users\Ryan Hunsaker\.m2\repository\org\apache\commons\commons-lang3\3.12.0\commons-lang3-3.12.0.jar = 1756751048880
 C:\Users\Ryan Hunsaker\.m2\repository\commons-io\commons-io\2.19.0\commons-io-2.19.0.jar = 1757077267079
-D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\Logger.java = 1757469914000
-D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\LedgerGUI.java = 1757538012000
+D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\Logger.java = 1757618806000
+D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\LedgerGUI.java = 1757620568000
 D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\LedgerGUI.java.bak = 1757469920000
 D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java\Logger.java.bak = 1757469914000
 D:\GitHubRepos\BrailleTranscriptionLedger\src\main\java = 1757469913090
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\element-list = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\serialized-form.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\overview-tree.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\allclasses-index.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\allpackages-index.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\module-search-index.js = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\package-search-index.js = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\type-search-index.js = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\member-search-index.js = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\tag-search-index.js = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\index-all.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\search.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\index.html = 1757538866000
-D:\GitHubRepos\BrailleTranscriptionLedger\target\site\apidocs\help-doc.html = 1757538866000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\generated-sources\annotations = 1757623572500
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\element-list = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\serialized-form.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\overview-tree.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\allclasses-index.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\allpackages-index.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\module-search-index.js = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\package-search-index.js = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\type-search-index.js = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\member-search-index.js = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\tag-search-index.js = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\index-all.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\search.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\index.html = 1757623578000
+D:\GitHubRepos\BrailleTranscriptionLedger\target\apidocs\help-doc.html = 1757623578000

@@ -1,1 +1,1 @@
-tagSearchIndex = [{"l":"Serialized Form","h":"","u":"serialized-form.html"}];updateSearchResults();
+tagSearchIndex = [{"l":"Configuration keys","h":"class BrailleTranscriptionLedger.LedgerGUI","d":"Section","u":"BrailleTranscriptionLedger/LedgerGUI.html#configuration-keys-heading"},{"l":"Serialized Form","h":"","u":"serialized-form.html"}];updateSearchResults();
