@@ -880,12 +880,15 @@ public class LedgerGUI extends JFrame {
         tviPanel.add(tviScrollPane, BorderLayout.CENTER);
         addLabelAndField(ProjectSetup, "TVIs", tviPanel);
         logger.info("Initializing Media Type field...");
-        if (mediaTypeField == null) {
-            logger.error("Error: Media Type field is null.");
-        }
+        // Initialize media type dropdown from JSON file, then validate contents.
         mediaTypeField = new JComboBox<>(
             loadOptionsFromFile("json_files/media_type.json", "media_types")
         );
+        if (mediaTypeField == null || mediaTypeField.getItemCount() == 0) {
+            logger.error("Error: Media Type field is null or empty after loading media_type.json.");
+        } else {
+            logger.info("Media Type field loaded successfully with {} items.", mediaTypeField.getItemCount());
+        }
         mediaTypeField.setFont(new Font("SansSerif", Font.PLAIN, 16));
     setFixedHeight(mediaTypeField, 28);
         mediaTypeField.setToolTipText(getString("media_type_tooltip"));
