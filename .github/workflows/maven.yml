@@ -34,9 +34,14 @@ jobs:
     - name: Run tests
       run: mvn -B test
 
+    - name: Get project version
+      id: project_version
+      run: |
+        echo "version=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
+
     - name: Archive shaded JAR
       if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: ledger-shaded-jar
+        name: ledger-shaded-jar-${{ steps.project_version.outputs.version }}
         path: target/*-shaded.jar
