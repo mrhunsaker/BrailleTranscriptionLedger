@@ -1,0 +1,47 @@
+name: CI - Maven build
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Run mvn -B package
+      run: mvn -B -DskipTests=false package
+
+    - name: Run tests
+      run: mvn -B test
+
+    - name: Get project version
+      id: project_version
+      run: |
+        echo "version=$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
+
+    - name: Archive shaded JAR
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ledger-shaded-jar-${{ steps.project_version.outputs.version }}
+        path: target/*-shaded.jar
