@@ -44,465 +44,177 @@ Braille Transcription Ledger is a desktop application designed to help teachers 
 2. **Project Setup Tab**
     - Create a new transcription project.
     - Select or enter:
-        - Academic subject
-        - School
-        - Teachers (multi-select)
-        - TVIs (multi-select)
-        - Media types (Braille, Large Print, Audio, etc.)
-        - Notes and completion status
+        # Braille Transcription Ledger
 
-3. **Project Status Tab**
-    - Track work done on existing projects.
-    - Select a project, specify work element (Braille, Graphics, Formatting, etc.), enter time spent, add notes, and update status.
+        Accessible document transcription tracker for teachers and TVIs (Teachers of the Visually Impaired).
 
-4. **Projects Tab**
-    - View all tracked projects in a sortable table.
-    - Filter and sort by student, teacher, subject, or completion status.
+        This README focuses on practical, hands-on information you need to build, run, configure, test, and navigate the application.
 
-5. **PDF Report Generation**
-    - Generate detailed PDF reports for billing or record-keeping.
-    - Select date ranges and projects to include.
+        ## Quick start (build, package, run)
 
-6. **Dynamic Dropdowns**
-    - Students, teachers, TVIs, subjects, and schools are loaded from simple `.json.txt` files you can edit.
+        Prerequisites
+        - Java 17 or newer installed and available on PATH.
+        - A Java build tool (Maven is the primary supported build in this repository).
 
-7. **Menus**
-    - **File**: Exit and About.
-    - **Accessibility**: Keyboard shortcuts, skip to main content, theme selection.
-    - **Language**: Switch between English and Spanish.
-    - **Help**: Keyboard shortcuts and help dialogs.
+        Build (Maven)
 
----
+        PowerShell example (project root):
 
-## Compiling & Running the Program
+        ```powershell
+        mvn -DskipTests package
+        ```
 
-### Prerequisites
+        This produces the runnable shaded JAR in `target/` (artifact name includes "shaded").
 
-- **Java 17 or newer** (download from [Adoptium](https://adoptium.net/) or [Oracle](https://www.oracle.com/java/technologies/downloads/))
-- **JSON configuration files** (see [JSON Configuration Files](#json-configuration-files))
-- **One build tool:** Gradle, Maven, or Ant (see below)
+        Run (PowerShell):
 
-### Using Gradle
+        ```powershell
+        # run with default settings
+        java -jar target/*-shaded.jar
 
-1. Open a terminal or command prompt in the project folder.
-2. Run:
-    ```
-    ./gradlew fatJar
-    ```
+        # increase logging verbosity
+        java -DLOG_LEVEL=DEBUG -jar target/*-shaded.jar
+        ```
 
-    This will resolve dependencies, compile the code, and create a standalone "fat JAR" (with all dependencies included) at `build/libs/BrailleTranscriptionLedger-all.jar`.
+        Run a specific DB location (overrides all other settings):
 
-3. To run the program:
-    ```
-    java -jar build/libs/BrailleTranscriptionLedger-all.jar
-    ```
+        ```powershell
+        java -jar target/*-shaded.jar --dbpath=C:\\data\\myledger
+        ```
 
-### Using Maven
+        Run with environment variable (PowerShell):
 
-1. Open a terminal or command prompt in the project folder.
-2. Run:
-    ```
-    mvn clean install
-    ```
-    This will resolve dependencies, compile the code, and create a runnable JAR file in `target/BrailleTranscriptionLedger.jar`.
+        ```powershell
+        $env:LEDGER_DB_PATH = 'C:\\Users\\You\\.brailleledger\\ledger'
+        java -jar target/*-shaded.jar
+        ```
 
-3. To run the program:
-    ```
-    java -jar target/BrailleTranscriptionLedger.jar
-    ```
+        ## Build systems supported
 
-### Using Ant
+        - Maven (primary): use `mvn package` / `mvn test`.
+        - Gradle: a Gradle wrapper is present if you prefer `./gradlew` tasks.
+        - Ant + Ivy: a fallback `build.xml` + `ivy.xml` are included for environments that require Ant-based builds. Use the `resolve` and `assemble` targets.
 
-1. Ensure you have `build.xml` in your project folder. The provided `build.xml` supports dependency management via Ivy, compiles sources, copies resources, and creates a runnable JAR in the `dist` directory.
+        If you use Ant and your environment blocks downloads, place a compatible Ivy jar in `lib/` before running the Ant resolve target.
 
-2. The Ant build will attempt to download an Ivy jar into `lib/ivy-2.5.1.jar` if it is not present. If your environment blocks downloads, place a compatible Ivy jar at `lib/ivy-2.5.1.jar` first.
+        ## Configuration: database path, config.properties, and Preferences
 
-3. Resolve dependencies and build with Ant (PowerShell example):
+        The application locates the H2 database using this precedence (highest → lowest):
 
-```powershell
-ant resolve
-ant assemble
-ant run
-```
+        1. CLI argument: `--dbpath=<path>` (do not include `.db` suffix)
+        2. Environment variable: `LEDGER_DB_PATH`
+        3. `config.properties` in the program root (key: `db.path`)
+        4. User home: `~/.brailleledger/ledger` (if present)
+        5. `app_home/ledger` inside the application root (if present)
+        6. Working directory default: `./ledger`
 
-Notes:
+        Notes
+        - The H2 URL used is `jdbc:h2:<base>;AUTO_SERVER=TRUE` to allow concurrent connections (useful for testing and for tools such as the H2 Console).
+        - Use absolute paths to avoid ambiguity on Windows (backslash escaping in PowerShell is required).
 
-- The `resolve` target retrieves third-party jars into `lib/` using Ivy and the included `ivysettings.xml`.
-- The `assemble` target compiles the sources and creates `dist/BrailleTranscriptionLedger.jar`.
-- The project's `pom.xml` (Maven) is the authoritative source for dependency versions. Keep Ivy dependencies in `ivy.xml` in sync if you change versions in the POM.
-- If you prefer Ivy settings customization, edit `ivysettings.xml` to add company repositories or mirrors.
+        Runtime configuration keys in `config.properties` (also editable via the in-app Preferences dialog):
 
-**Note:** All build systems ensure that resources (such as language `.properties` files) are included in the JAR, and dependencies are resolved automatically. If you encounter issues, ensure your Java version is 17 or newer and your build tool is up to date.
+        - `db.path` — base H2 path (examples: `./app_home/ledger`, `D:/data/ledger`)
+        - `window.maximized` — `true` or `false` (main window startup)
+        - `log.level` — `DEBUG`, `INFO`, `WARN`, `ERROR`
 
----
+        Preferences dialog
+        - From the application menu, open Preferences to edit `db.path`, `window.maximized`, and `log.level`. Changes are applied immediately where possible (DB reconnect is supported when `db.path` changes).
 
-## Database location & logging
+        ## Running tests and quick checks
 
-The application uses an embedded H2 database by default. You can control where the database file is stored using one of the following methods (higher precedence listed first):
+        Run unit + integration tests (Maven):
 
-- Command-line: pass `--dbpath=<path>` (path without the `.db` suffix). Example:
+        ```powershell
+        mvn test
+        ```
 
-    ```
-    java -jar target/BrailleTranscriptionLedger.jar --dbpath=/path/to/custom/ledger
-    ```
+        Run a single test class:
 
-- Environment variable: set `LEDGER_DB_PATH` to the base path (no `.db` suffix).
+        ```powershell
+        mvn -Dtest=SubmitFlowIntegrationTest test
+        ```
 
-- `config.properties` file in the program root with the key `db.path=/full/path/to/ledger`.
+        Notes
+        - Tests are JUnit 5 based and exercise DB-resolution and submit flow behavior.
+        - The codebase exposes a test hook used by the tests so the DB path resolution is deterministic during CI.
 
-- User home: the app will prefer `~/.brailleledger/ledger` if present.
+        ## Application UI — quick navigation and behavior
 
-- `app_home`: if an `app_home/ledger` or `app_home/ledger.db` exists in the program root, it will be used.
+        Main window areas:
 
-- Default: `./ledger` in the current working directory.
+        - Project Setup tab: create new projects. Fill fields (Student, Teacher(s), TVI(s), School, Subject, Media Type, Notes) and press the Submit button located directly under the input form to create the project and its first details.
+        - Project Status tab: add time/element tracking for an existing project (select project then add tracking entries).
+        - Projects tab: view/filter/sort projects. An "Open Project" button opens the filesystem folder for the selected project (the Submit flow creates project folders in `app_home/projects/<sanitized-name>`).
 
-Examples:
+        Submit flow notes
+        - On Submit the app will create `app_home/projects/<sanitized-name>` under the application root (if not present). It also persists that folder path into the `Project_Name.folder_path` column.
+        - During the same flow the database file is consolidated into the application `app_home` folder (moved/created as `app_home/ledger` / `app_home/ledger.db` depending on the platform). This behavior is automatic when Submit creates a new project folder.
 
-- Set via environment (Windows PowerShell):
+        Status & dialogs
+        - The application shows a non-modal status bar for background progress and short messages, and uses modeless dialogs where appropriate so the UI remains responsive.
 
-    ```powershell
-    $env:LEDGER_DB_PATH = 'C:\\Users\\You\\.brailleledger\\ledger'
-    java -jar target/BrailleTranscriptionLedger.jar
-    ```
+        Keyboard accessibility
+        - Full keyboard support for form submission, navigation, and PDF generation. See the Help menu in-app for an up-to-date list of shortcuts.
 
-- Use the CLI flag to override everything else:
-
-    ```
-    java -jar target/BrailleTranscriptionLedger.jar --dbpath=C:\\data\\myledger
-    ```
-
-Logging level can be controlled with the `LOG_LEVEL` system property or environment variable used at startup. Typical values: `DEBUG`, `INFO`, `WARN`, `ERROR`.
+        ## JSON option files (what the app loads at startup)
 
-Example (run with INFO level):
+        Files live in `json_files/` and are shipped with example data. The app will load those files at startup to populate dynamic dropdowns (students, teachers, tvis, schools, subjects, media types, delivery modes, proof status, project types, project elements).
 
-```text
-java -DLOG_LEVEL=INFO -jar target/BrailleTranscriptionLedger.jar
-```
+        File naming
+        - The repository stores them with `.json` or `.json.txt` extensions. The loader accepts both; ensure the JSON structure is an object with a single array property (see examples in the repo).
 
-This README section documents the runtime precedence and how to override the database and logging settings for testing or deployment.
+        Example (students.json):
 
----
+        ```json
+        {
+            "students": ["Student A", "Student B"]
+        }
+        ```
 
-## Configuration Keys {#configuration-keys}
+        ## Packaging and a quick smoke test
 
-This section documents the small set of runtime configuration keys the application reads from `config.properties` in the program root. These keys are referenced in the Javadoc for `LedgerGUI`.
-
-- `db.path` — base path used to locate the embedded H2 database (examples: `./app_home/ledger`, `D:/data/ledger`).
-- `window.maximized` — `true` or `false` to control whether the main window starts maximized.
-- `log.level` — logging level (DEBUG, INFO, WARN, ERROR, FATAL).
-
-See the section above "Database location & logging" for usage examples and precedence rules.
-
-
-## JSON Configuration Files
-
-**Location:** Change the names of the `.json.txt` files in /json_files to remove the .txt extension. They are named this way to protect sensitive information from being exposed accidentally online as the .gitignore file excludes uploading .json files.
-
-**Required Files:**
-- `students.json.txt`
-- `teachers.json.txt`
-- `tvis.json.txt`
-- `LEAs.json.txt`
-- `subjects.json.txt`
-- `schools.json.txt`
-- `media_type.json.txt`
-- `delivery_mode.json.txt`
-- `proof_status.json.txt`
-- `project_type.json.txt`
-- `project_element.json.txt`
-
-**Format Example:**
+        Build the shaded JAR (recommended for distribution):
 
-Each file should contain a JSON object with a single property whose value is an array of entries. For example:
-
-`students.json.txt`
-```json
-{
-  "students": [
-    "Student 1",
-    "Student 2",
-    "Student 3"
-  ]
-}
-```
-
-`teachers.json.txt`
-```json
-{
-  "teachers": [
-    "Teacher A",
-    "Teacher B",
-    "Teacher C"
-  ]
-}
-```
-
-`tvis.json.txt`
-```json
-{
-  "tvis": [
-    "Teacher A",
-    "Teacher B",
-    "Teacher C"
-  ]
-}
-```
-
-`subjects.json.txt`
-```json
-{
-  "subjects": [
-    "Math",
-    "English",
-    "Chemistry"
-  ]
-}
-```
-
-`schools.json.txt`
-```json
-{
-  "schools": [
-    "School 1",
-    "School 2"
-  ]
-}
-```
-
-**Tip:** You can edit these files with Notepad, TextEdit, or any text editor. The program will reload them on startup. Make sure to keep the structure as a JSON object with a single array property matching the file's purpose.
-
----
-
-## Accessibility & Compliance
-
-This application is developed with accessibility as a core requirement. We aim for compliance with WCAG 2.1 AA/AAA standards and best practices for desktop applications.
-
-**Key Accessibility Features:**
-- All interactive elements are fully keyboard accessible (Tab, Shift+Tab, arrow keys, Space/Enter).
-- Logical tab order and custom focus traversal ensure smooth navigation.
-- Global keyboard shortcuts for help, form submission, PDF generation, and more (see below).
-- All dialogs trap focus and support Esc/Close.
-- Screen reader support: all fields, buttons, and tables have accessible names, labels, and descriptions.
-- High-contrast and color-blind-friendly themes are available.
-- All feedback, status messages, and errors are announced to screen readers.
-- Context-sensitive help, tooltips, and a Help menu/dialog (Ctrl+.) listing all shortcuts and accessibility features.
-- Multi-language support (English and Spanish) with accessible resource bundles.
-- Visual focus indicators and support for system font scaling/high-DPI displays.
-
-**Example Keyboard Shortcuts:**
-- Open Help Menu: Ctrl + .
-- Submit Form: Ctrl + Enter
-- Generate PDF: Ctrl + G
-- Move to Next/Previous Field: Tab / Shift+Tab
-- Navigate Table/Dropdowns: Arrow Keys
-- Activate Button/Checkbox: Spacebar/Enter
-- Focus Menu Bar: Alt
-- Close Dialog: Esc
-
-**Testing & Recommendations:**
-- Regularly tested with keyboard-only navigation and screen readers (NVDA, JAWS, VoiceOver).
-- All themes meet or exceed WCAG 2.1 AA contrast requirements.
-- Ongoing user feedback and accessibility testing are encouraged.
-
-For a detailed accessibility analysis, feature summary, and recommendations, see [Accessibility.md](Accessibility.md).
-
----
-
-## Diagrams
-
-### Program Structure Diagram
-
-```mermaid
-graph TD
-    A[LedgerGUI (Main Window)]
-    B[Project Setup Tab]
-    C[Project Status Tab]
-    D[Projects Tab]
-    E[PDF Report Generator]
-    F[H2 Embedded Database]
-    G[JSON Config Loader]
-
-    A --> B
-    A --> C
-    A --> D
-    A --> E
-    A --> G
-    B --> F
-    C --> F
-    D --> F
-    E --> F
-    G --> B
-    G --> C
-    G --> D
-```
-
-### Workflow Diagram
-
-```mermaid
-flowchart TD
-    Start([Start Program])
-    LoadJSON[Load JSON Files]
-    Setup[Setup Project]
-    Track[Track Work]
-    View[View Projects]
-    Report[Generate PDF Report]
-    End([End])
-
-    Start --> LoadJSON
-    LoadJSON --> Setup
-    Setup --> Track
-    Track --> View
-    View --> Report
-    Report --> End
-```
-
-### Database Schema Diagram
-
-```mermaid
-erDiagram
-    Project_Name {
-        INT project_name_id PK
-        TEXT name
-        TEXT date
-    }
-    Schools {
-        INT school_id PK
-        TEXT name
-    }
-    Teachers {
-        INT teacher_id PK
-        TEXT name
-        TEXT email
-        INT school_id FK
-    }
-    TVIs {
-        INT tvi_id PK
-        TEXT name
-        TEXT email
-        INT school_id FK
-    }
-    Students {
-        INT student_id PK
-        TEXT name
-        TEXT email
-        INT school_id FK
-        INT lea_id FK
-    }
-    LEAs {
-        INT lea_id PK
-        TEXT name
-    }
-    Subjects {
-        INT subject_id PK
-        TEXT name
-        INT teacher_id FK
-        INT school_id FK
-    }
-    Project_Details {
-        INT detail_id PK
-        INT project_name_id FK
-        INT student_id FK
-        INT teacher_id FK
-        INT subject_id FK
-        INT school_id FK
-        INT minutes_spent
-        TEXT proof_status
-        BOOL complete
-        BOOL delivered
-        TEXT delivery_mode
-        TEXT subject
-        TEXT time
-        TEXT date
-        TEXT notes
-    }
-    Project_Tracking {
-        INT tracking_id PK
-        INT detail_id FK
-        INT project_name_id FK
-        INT student_id FK
-        TEXT updated
-        TEXT completed
-        TEXT notes
-        BOOL complete
-        TEXT proof_status
-        TEXT element
-        INT time
-    }
-    Media_Types {
-        INT media_type_id PK
-        TEXT type
-        INT project_name_id FK
-    }
-    Student_Teachers {
-        INT student_id FK
-        INT teacher_id FK
-    }
-
-    Project_Name ||--o{ Project_Details : contains
-    Schools ||--o{ Teachers : employs
-    Schools ||--o{ TVIs : employs
-    Schools ||--o{ Students : enrolls
-    Schools ||--o{ Subjects : offers
-    Teachers ||--o{ Subjects : teaches
-    Students ||--o{ Student_Teachers : assigned
-    Project_Name ||--o{ Media_Types : has
-    Project_Details ||--o{ Project_Tracking : tracked_by
-    LEAs ||--o{ Students : supervises
-```
-
----
-
-## How to Contribute
-
-We welcome contributions from teachers, TVIs, developers, and anyone interested in accessible education technology!
-
-### Ways to Contribute
-
-- **Code:** Add features, fix bugs, improve accessibility, or refactor for clarity and maintainability.
-- **Documentation:** Improve this README, add usage guides, or clarify instructions for non-technical users.
-- **Data:** Update or expand the `.json.txt` configuration files (students, teachers, etc.).
-- **Testing:** Try the application on different platforms, test accessibility features, or help with automated testing.
-- **Ideas & Feedback:** Suggest new features, report bugs, or propose workflow improvements.
-
-### Contribution Process
-
-1. **Fork the repository** on GitHub.
-2. **Create a new branch** for your changes.
-3. **Make your changes** (code, documentation, or JSON files).
-4. **Test your changes** to ensure they work as expected.
-5. **Open a pull request** with a clear description of what you changed and why.
-6. For major changes, open an issue first to discuss your idea with the maintainers.
-
-### Tips for Non-Technical Contributors
-
-- You can contribute by:
-  - Suggest new features or report bugs by opening an issue on GitHub.
-  - Help improve documentation for other teachers and users.
-  - Share feedback on accessibility, usability, or language support.
-
-### Code Style & Best Practices
-
-- Follow the existing code style and conventions.
-- Write clear commit messages and pull request descriptions.
-- Test your changes on all supported platforms if possible.
-- Ensure accessibility features remain functional.
-
-Thank you for helping make accessible education easier for everyone!
-
----
-
-## License
-
-This project is licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
-
----
-
-## Contact
-
-For questions, help, or suggestions:
-- Open an issue on GitHub
-- Or contact the project maintainer listed in the repository
-
----
-
-_Thank you for helping make accessible education easier!_
+        ```powershell
+        mvn -DskipTests package
+        ```
+
+        Run a short smoke start (10–20s) to confirm startup, option loading, and DB connection:
+
+        ```powershell
+        # start the app and capture logs
+        java -jar target/*-shaded.jar *> ledger-run.log 2>&1 & Start-Sleep -Seconds 10; Get-Content ledger-run.log -Tail 200
+        ```
+
+        What to look for in logs
+        - "Attempting to load options from file: json_files/..." (option loads)
+        - "Connecting to database at URL: jdbc:h2:..." (DB resolution)
+        - No uncaught SQL exceptions on startup
+
+        Common non-fatal warnings
+        - FlatLaf / native-access warnings: these are JVM advisory messages about restricted native access and do not affect functionality. They can be ignored for normal use.
+
+        ## Troubleshooting
+
+        - Database locked / already in use: the app uses H2 with AUTO_SERVER; if you see lock errors, ensure no other process holds the file or use an absolute path in `--dbpath`.
+        - If a JSON options file is missing or empty, dropdowns may show no entries — edit the corresponding file in `json_files/` and restart the app.
+        - If the GUI logs a message that a field (e.g., Media Type) was empty on startup, confirm the `json_files/media_type.json` exists and contains a non-empty array.
+
+        ## Contributing, testing, and code style
+
+        - Fork and open a PR; include a short description and a changelog entry when appropriate.
+        - Run `mvn test` locally before submitting a PR.
+        - Follow the existing Java coding style and keep accessibility concerns in mind for UI changes.
+
+        ## License
+
+        This project is licensed under the Apache License 2.0 — see the `LICENSE` file.
+
+        ## Contact
+
+        - Open an issue in this repository for bugs or feature requests.
+
+        ---
+
+        If you'd like, I can now: (A) run `mvn -DskipTests package` to update the shaded JAR, (B) run the smoke start and show the tail of the log, or (C) push a branch and open a PR with these README updates. Tell me which to run next.

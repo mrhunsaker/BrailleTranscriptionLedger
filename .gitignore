@@ -41,7 +41,6 @@ Thumbs.db
 .mtj.tmp/
 
 # Package Files #
-*.jar
 *.war
 *.nar
 *.ear
@@ -54,9 +53,29 @@ hs_err_pid*
 replay_pid*
 
 # Do not sync .json files of the database to avoid potential HIPAA or FERPA issues
-*.json
-*.db
-*.mv.db
-*.trace.db
+
+## Project-specific runtime files (ignore local/generated data, keep committed sample JSON)
+# runtime H2 database files (local)
+/ledger.db
+/ledger.mv.db
+/ledger.trace.db
+
+# app_home runtime (projects created by users at runtime)
+/app_home/projects/
+
+# local app logs and local config
+ledger.log
+ledger.err
+config.properties
+
+# Ignore editor and OS/temp files
+/.idea/
+/.vscode/
+*.iml
+nbproject/
+.classpath
+.project
+.settings/
+
 
 app_home/
